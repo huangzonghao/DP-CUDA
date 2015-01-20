@@ -115,7 +115,43 @@ Also, we can use the tree structure of state space to reduce computation. **dep_
 Each state regarded as a node, will eventually go to the root node
 \\( (0,...,0)\\). Thus we formed a tree for our state space.
 
-Our observation is that if one node is computed, then all its son nodes (the path to the root node) needs not be computed (detail needs here). Thus we can just compute 
+Our observation is that if one node is computed, then all its son nodes (the path to the root node) needs not be computed. For example, if the optimal action for \\(
+(2,3,5)\\) is \\((z ^{\ast}, q ^{\ast})= (3,4) \\), then
+we know the optimal action for \\((1,3,5)\\) is 
+\\( (2,4)\\), the optimal action for \\((0,3,5)\\) is
+\\( (1,4)\\), etc. 
+
+Thus we can just compute 
 all leaf nodes to obtain the value of all nodes. 
 Also, different nodes have common son nodes, which should be utilized to optimize the algorithm.
+
+###New idea! Algorithm redesign: Threshold policy
+
+It has been proved in the literature the optimal 
+policy is kind of threshold policy. So instead of seeking
+for an optimal policy for every state, We only need to find the thresholds for each level and store it. For any 
+state, we compare its element on each level and the corresponding threshold, and determine the optimal 
+depletion policy. (order policy will be mentioned later)
+
+To be concrete, in period \\(t\\), for each level 
+\\(1 \le i \le m\\) there is a threshold \\(\bar {z}
+_{t,i} = \bar {z} _{t,i} (x _{i+1}, ..., x _m)\\)
+(means it depends only on newer inventory), such that
+for a state \\(x=(x _1,..., x _m)\\), on level
+\\(i\\) if \\(x _i > \bar {z} _{t,i} \\) , then deplete
+down to \\(\bar {z} _{t,i} \\), otherwise do nothing.
+
+Assume we have computed all the thresholds
+\\(\bar {z} _m, \bar {z} _{m-1} (x _m),..., \bar {z}
+_1 (x _1,..., x _m) \\). To find the optimal policy
+for \\(y= (y _1,..., y _m)\\), we should start with the newest items and progress to the oldest ones. As long as \\( y _i > \bar {z} _i\\) for some \\(i\\), then
+deplete \\(y _i\\) down to \\(\bar {z} _i\\), and 
+deplete all older items (level \\(\le i\\)).
+(This should be intuitive because newer inventory 
+has more value, you always deplete from the oldest inventory).
+
+The number of thresholds is \\( 1+k+...+k ^{m-1}\\),
+which is much smaller than \\(k ^m\\), the number of states. Also, we can make use of the monotonicity of 
+threshold function to reduce computation.
+(To be continued)
 
