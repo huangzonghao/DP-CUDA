@@ -153,5 +153,15 @@ has more value, you always deplete from the oldest inventory).
 The number of thresholds is \\( 1+k+...+k ^{m-1}\\),
 which is much smaller than \\(k ^m\\), the number of states. Also, we can make use of the monotonicity of 
 threshold function to reduce computation.
-(To be continued)
 
+### A sketch of threshold algorithm 
+
+- for t=1:T, do the following steps.
+- for i=m:1, for \\(y _m \le z _m ^{\ast},y _{m-1}
+\le z _{m-1} ^{\ast} (y _m),...,y _{i+1}
+\le z _{i+1} ^{\ast} (y _{i+2},...,y _m)\\),
+
+compute \\(z _i ^{\ast} (y _{i+1},...,y _m),~ q _i ^{\ast}
+(z _i ^{\ast}, y _{i+1},..., y _m)\\).
+
+- for \\(x=(x _1,...,x _m)\\), find \\(z ^{\ast} (x),~ q ^{\ast}(x).\\) Update \\(V(x)\\).

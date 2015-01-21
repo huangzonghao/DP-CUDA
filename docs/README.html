@@ -424,8 +424,19 @@ deplete all older items (level \(\le i\)).
 has more value, you always deplete from the oldest inventory).</p>
 <p>The number of thresholds is \( 1+k+...+k ^{m-1}\),
 which is much smaller than \(k ^m\), the number of states. Also, we can make use of the monotonicity of 
-threshold function to reduce computation.
-(To be continued)</p>
+threshold function to reduce computation.</p>
+<h3>A sketch of threshold algorithm</h3>
+<ul>
+<li>for t=1:T, do the following steps.</li>
+<li>for i=m:1, for \(y _m \le z _m ^{\ast},y _{m-1}
+\le z _{m-1} ^{\ast} (y _m),...,y _{i+1}
+\le z _{i+1} ^{\ast} (y _{i+2},...,y _m)\),</li>
+</ul>
+<p>compute \(z _i ^{\ast} (y _{i+1},...,y _m),~ q _i ^{\ast}
+(z _i ^{\ast}, y _{i+1},..., y _m)\).</p>
+<ul>
+<li>for \(x=(x _1,...,x _m)\), find \(z ^{\ast} (x),~ q ^{\ast}(x).\) Update \(V(x)\).</li>
+</ul>
 
 </body>
 </html>
