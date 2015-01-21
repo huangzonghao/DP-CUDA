@@ -37,6 +37,9 @@ def StateFactory(config):
         def __init__(self, *args):
             self.state = list(args)
 
+        def __iter__(self):
+            return iter(self.state)
+
         def __eq__(self, other):
             if isinstance(other, self.__class__):
                 return self.state == other.state

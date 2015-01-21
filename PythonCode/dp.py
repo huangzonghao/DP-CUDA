@@ -12,21 +12,24 @@ config.read('./config.ini')
 # State class encapsulated with parameters
 State = StateFactory(config)
 
+unit_salvage = config.getfloat('Parameter', 'Salvage')
 discount = config.getfloat('Parameter', 'Discount')
+
+n_capacity = config.getint('State', 'Capacity')
+n_dimension = config.getint('State', 'Dimension')
+max_hold = config.getint('State', 'MaxHold')
 
 n_period = config.getint('Simulation', 'Period')
 n_sample = config.getint('Simulation', 'Sample')
 drate = config.getfloat('Simulation', 'DemandRate')
-
-n_capacity = config.getint('State', 'Capacity')
-n_dimension = config.getint('State', 'Dimension')
 
 demand_matrix = scipy.stats.poisson.rvs(drate, size=(n_period, n_sample))
 
 shape = (n_capacity,) * n_dimension
 
 # Using a trick of np.where() to return all indices
-utility = np.vstack(np.where(np.ones(shape))).sum(axis=0).reshape(shape)
+utility = unit_salvage * \
+    np.vstack(np.where(np.ones(shape))).sum(axis=0).reshape(shape)
 
 # Main loop
 for epoch, demands in enumerate(demand_matrix):
@@ -35,7 +38,9 @@ for epoch, demands in enumerate(demand_matrix):
 
     iterator = np.nditer(new_utility, flags=['multi_index'])
     for _ in iterator:
-        for n_depletion in range(sum(iterator.multi_index)+1):
+        hold = sum(iterator.multi_index)
+        at_least_deplete = max(hold-max_hold, 0)
+        for n_depletion in range(at_least_deplete, hold+1):
             for n_order in range(n_capacity):
                 objective = []
                 for n_demand in demands:
