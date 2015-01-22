@@ -10,10 +10,19 @@ config = ConfigParser()
 config.read('./config.ini')
 
 # State class encapsulated with parameters
-State = StateFactory(config)
-
 unit_salvage = config.getfloat('Parameter', 'Salvage')
+unit_hold = config.getfloat('Parameter', 'Hold')
+unit_order = config.getfloat('Parameter', 'Order')
+unit_price = config.getfloat('Parameter', 'Price')
+unit_disposal = config.getfloat('Parameter', 'Disposal')
 discount = config.getfloat('Parameter', 'Discount')
+
+State = StateFactory(unit_salvage,
+                     unit_hold,
+                     unit_order,
+                     unit_price,
+                     unit_disposal,
+                     discount)
 
 n_capacity = config.getint('State', 'Capacity')
 n_dimension = config.getint('State', 'Dimension')

@@ -1,25 +1,16 @@
 from ConfigParser import ConfigParser
 
 
-def StateFactory(config):
+def StateFactory(unit_salvage,
+                 unit_hold,
+                 unit_order,
+                 unit_price,
+                 unit_disposal,
+                 discount):
     '''
     State = StateFactory(config)
     state = State(4, 3, 2, 1)
     '''
-    unit_salvage = config.getfloat('Parameter', 'Salvage')
-    unit_disposal = config.getfloat('Parameter', 'Disposal')
-    unit_order = config.getfloat('Parameter', 'Order')
-    unit_hold = config.getfloat('Parameter', 'Hold')
-    unit_price = config.getfloat('Parameter', 'Price')
-    discount = config.getfloat('Parameter', 'Discount')
-
-    def with_param(param):
-        def decorator(fn):
-            def decorated(*args):
-                return param * fn(*args)
-            return decorated
-        return decorator
-
     class State(object):
         '''
         state = [4, 3, 2, 1]
@@ -68,26 +59,21 @@ def StateFactory(config):
                     self.state[i] = 0
             return acc
 
-        @with_param(unit_salvage)
         def deplete(self, n_depletion=0):
-            return self.substract(n_depletion)
+            return unit_salvage * self.substract(n_depletion)
 
-        @with_param(unit_hold)
         def hold(self):
-            return sum(self.state)
+            return unit_hold * sum(self.state)
 
-        @with_param(unit_order)
         def order(self, n_order=0):
             self.state.append(n_order)
-            return n_order
+            return unit_order * n_order
 
-        @with_param(unit_price)
         def sell(self, n_demand=0):
-            return self.substract(n_demand)
+            return unit_price * self.substract(n_demand)
 
-        @with_param(unit_disposal)
         def dispose(self):
-            return self.state.pop(0)
+            return unit_disposal * self.state.pop(0)
 
         def revenue(self, n_depletion, n_order, n_demand):
             return (self.deplete(n_depletion) +
