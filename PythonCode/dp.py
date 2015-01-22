@@ -47,7 +47,7 @@ utility = unit_salvage * \
 # Main loop
 for epoch, demands in enumerate(demand_matrix):
     new_utility = np.empty(shape)
-    new_utility[:] = np.NAN
+    new_utility[:] = -np.infty
 
     iterator = np.nditer(new_utility, flags=['multi_index'])
     for _ in iterator:
@@ -71,3 +71,5 @@ for epoch, demands in enumerate(demand_matrix):
         print iterator.multi_index, (z, q), new_utility[iterator.multi_index]
     utility = new_utility
     print
+
+print 'Demand matrix:', demand_matrix
