@@ -1,12 +1,12 @@
-from ConfigParser import ConfigParser
+# -*- encoding: utf-8 -*-
 
 
-def StateFactory(unit_salvage,
-                 unit_hold,
-                 unit_order,
-                 unit_price,
-                 unit_disposal,
-                 discount):
+def StateFactory(unit_salvage=0,
+                 unit_hold=0,
+                 unit_order=0,
+                 unit_price=0,
+                 unit_disposal=0,
+                 discount=0):
     '''
     State = StateFactory(config)
     state = State(4, 3, 2, 1)
@@ -102,10 +102,7 @@ def StateFactory(unit_salvage,
 
 
 def test_substract():
-    config = ConfigParser()
-    config.read('./config.ini')
-
-    State = StateFactory(config)
+    State = StateFactory()
 
     state = State(1, 1, 0, 0)
     assert state.substract(2) == 2
@@ -123,16 +120,19 @@ def test_substract():
 
 
 def test_revenue():
-    config = ConfigParser()
-    config.read('./config.ini')
+    unit_salvage = 1.0
+    unit_hold = -0.5
+    unit_order = -3.0
+    unit_price = 5.0
+    unit_disposal = -2.0
+    discount = 0.95
 
-    config.set('Parameter', 'Salvage', '1.0')
-    config.set('Parameter', 'Disposal', '-2.0')
-    config.set('Parameter', 'Order', '-3.0')
-    config.set('Parameter', 'Hold', '-0.5')
-    config.set('Parameter', 'Price', '5.0')
-    config.set('Parameter', 'Discount', '0.95')
-    State = StateFactory(config)
+    State = StateFactory(unit_salvage,
+                         unit_hold,
+                         unit_order,
+                         unit_price,
+                         unit_disposal,
+                         discount)
 
     state = State(2, 3, 4)
     assert abs(5.55 - state.revenue(1, 2, 3) < 1e-6)
@@ -144,10 +144,7 @@ def test_revenue():
 
 
 def test_children():
-    config = ConfigParser()
-    config.read('./config.ini')
-
-    State = StateFactory(config)
+    State = StateFactory()
 
     state = State(2, 3, 4)
     assert list(state.children(5)) == [[3, 3, 4]]

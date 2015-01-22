@@ -1,3 +1,6 @@
+# -*- encoding: utf-8 -*-
+
+
 from ConfigParser import ConfigParser
 
 import numpy as np
@@ -17,13 +20,6 @@ unit_price = config.getfloat('Parameter', 'Price')
 unit_disposal = config.getfloat('Parameter', 'Disposal')
 discount = config.getfloat('Parameter', 'Discount')
 
-State = StateFactory(unit_salvage,
-                     unit_hold,
-                     unit_order,
-                     unit_price,
-                     unit_disposal,
-                     discount)
-
 n_capacity = config.getint('State', 'Capacity')
 n_dimension = config.getint('State', 'Dimension')
 max_hold = config.getint('State', 'MaxHold')
@@ -31,6 +27,14 @@ max_hold = config.getint('State', 'MaxHold')
 n_period = config.getint('Simulation', 'Period')
 n_sample = config.getint('Simulation', 'Sample')
 drate = config.getfloat('Simulation', 'DemandRate')
+
+
+State = StateFactory(unit_salvage,
+                     unit_hold,
+                     unit_order,
+                     unit_price,
+                     unit_disposal,
+                     discount)
 
 demand_matrix = scipy.stats.poisson.rvs(drate, size=(n_period, n_sample))
 
