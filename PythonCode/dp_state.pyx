@@ -1,16 +1,18 @@
 # -*- encoding: utf-8 -*-
+cimport cython
 from cpython cimport array
 
 
-cdef int cmin(int a, int b):
+cdef inline int cmin(int a, int b) nogil:
     return a if a < b else b
 
 
-cdef int cmax(int a, int b):
+cdef inline int cmax(int a, int b) nogil:
     return a if a > b else b
 
-
-cdef int csum(int[:] state, int n_dimension):
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef inline int csum(int[:] state, int n_dimension) nogil:
     cdef int i
     cdef int acc = 0
     for i in range(n_dimension):
@@ -18,7 +20,9 @@ cdef int csum(int[:] state, int n_dimension):
     return acc
 
 
-cpdef int substract(int[:] state, int num, int n_dimension):
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef int substract(int[:] state, int num, int n_dimension) nogil:
     cdef int i
     cdef int acc = 0
     for i in range(n_dimension):
@@ -33,41 +37,48 @@ cpdef int substract(int[:] state, int num, int n_dimension):
     return acc
 
 
-cdef double deplete(int[:] state, int n_depletion, double unit_salvage, int n_dimension):
+cdef inline double deplete(int[:] state, int n_depletion,
+                    double unit_salvage, int n_dimension) nogil:
     return unit_salvage * substract(state, n_depletion, n_dimension)
 
 
-cdef double hold(int[:] state, double unit_hold, int n_dimension):
+cdef inline double hold(int[:] state, double unit_hold, int n_dimension) nogil:
     return unit_hold * csum(state, n_dimension)
 
 
-cdef double order(int[:] state, int n_order, double unit_order, int n_dimension):
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef inline double order(int[:] state, int n_order,
+                  double unit_order, int n_dimension) nogil:
     state[n_dimension-1] = n_order
     return unit_order * n_order
 
 
-cdef double sell(int[:] state, int n_demand, double unit_price, int n_dimension):
+cdef inline double sell(int[:] state, int n_demand,
+                 double unit_price, int n_dimension) nogil:
     return unit_price * substract(state, n_demand, n_dimension)
 
 
-cdef double dispose(int[:] state, double unit_disposal):
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef inline double dispose(int[:] state, double unit_disposal) nogil:
     cdef int disposal = state[0]
     state[0] = 0
     return unit_disposal * disposal
 
 
-cpdef double revenue(int[:] state,
-                     int n_depletion,
-                     int n_order,
-                     int n_demand,
-                     double unit_salvage,
-                     double unit_hold,
-                     double unit_order,
-                     double unit_price,
-                     double unit_disposal,
-                     double discount,
-                     int n_capacity,
-                     int n_dimension):
+cpdef inline double revenue(int[:] state,
+                            int n_depletion,
+                            int n_order,
+                            int n_demand,
+                            double unit_salvage,
+                            double unit_hold,
+                            double unit_order,
+                            double unit_price,
+                            double unit_disposal,
+                            double discount,
+                            int n_capacity,
+                            int n_dimension) nogil:
     cdef double depletion = deplete(state, n_depletion, unit_salvage, n_dimension);
     cdef double holding = hold(state, unit_hold, n_dimension)
     cdef double ordering = order(state, n_order, unit_order, n_dimension)

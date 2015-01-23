@@ -35,6 +35,7 @@ def simulation():
     # Construct demand matrix
     # demand_matrix = scipy.stats.poisson.rvs(drate, size=(n_period, n_sample))
     demand_matrix = np.ones((n_period, n_sample)) * drate
+    demand_matrix = demand_matrix.astype(np.int32)
 
     if verbosity > 0:
         print('Start with demand sample: {}'.format(demand_matrix))
@@ -51,7 +52,7 @@ def simulation():
         current_utility = np.empty(shape)
         current_utility[:] = -np.infty
 
-        iterator = np.nditer(current_utility, flags=['multi_index'])
+        iterator = np.nditer(future_utility, order='C', flags=['multi_index'])
         for _ in iterator:
             current_index = iterator.multi_index
             optimal_value = optimize(current_index,
