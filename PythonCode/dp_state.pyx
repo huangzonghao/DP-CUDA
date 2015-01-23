@@ -1,6 +1,81 @@
 # -*- encoding: utf-8 -*-
+from cpython cimport array
 
 
+cdef int cmin(int a, int b):
+    return a if a < b else b
+
+
+cdef int cmax(int a, int b):
+    return a if a > b else b
+
+
+cdef int csum(int[:] state, int n_dimension):
+    cdef int i
+    cdef int acc = 0
+    for i in range(n_dimension):
+        acc += state[i]
+    return acc
+
+
+cpdef int substract(int[:] state, int num, int n_dimension):
+    cdef int i
+    cdef int acc = 0
+    for i in range(n_dimension):
+        if num <= state[i]:
+            acc += num
+            state[i] -= num
+            break
+        else:
+            num -= state[i]
+            acc += state[i]
+            state[i] = 0
+    return acc
+
+
+cdef double deplete(int[:] state, int n_depletion, double unit_salvage, int n_dimension):
+    return unit_salvage * substract(state, n_depletion, n_dimension)
+
+
+cdef double hold(int[:] state, double unit_hold, int n_dimension):
+    return unit_hold * csum(state, n_dimension)
+
+
+cdef double order(int[:] state, int n_order, double unit_order, int n_dimension):
+    state[n_dimension-1] = n_order
+    return unit_order * n_order
+
+
+cdef double sell(int[:] state, int n_demand, double unit_price, int n_dimension):
+    return unit_price * substract(state, n_demand, n_dimension)
+
+
+cdef double dispose(int[:] state, double unit_disposal):
+    cdef int disposal = state[0]
+    state[0] = 0
+    return unit_disposal * disposal
+
+
+cpdef double revenue(int[:] state,
+                     int n_depletion,
+                     int n_order,
+                     int n_demand,
+                     double unit_salvage,
+                     double unit_hold,
+                     double unit_order,
+                     double unit_price,
+                     double unit_disposal,
+                     double discount,
+                     int n_capacity,
+                     int n_dimension):
+    cdef double depletion = deplete(state, n_depletion, unit_salvage, n_dimension);
+    cdef double holding = hold(state, unit_hold, n_dimension)
+    cdef double ordering = order(state, n_order, unit_order, n_dimension)
+    cdef double sales = sell(state, n_demand, unit_price, n_dimension)
+    cdef double disposal = dispose(state, unit_disposal)
+
+    return depletion + holding + discount * (ordering + sales + disposal)
+"""
 def StateFactory(double unit_salvage=0.,
                  double unit_hold=0.,
                  double unit_order=0.,
@@ -46,60 +121,8 @@ def StateFactory(double unit_salvage=0.,
         def __reduce__(self):
             return (self.__class__, tuple(self.state))
 
-        def substract(self, int num):
-            cdef int i, acc
-            acc = 0
-            for i in range(len(self.state)):
-                if num <= self.state[i]:
-                    acc += num
-                    self.state[i] -= num
-                    break
-                else:
-                    num -= self.state[i]
-                    acc += self.state[i]
-                    self.state[i] = 0
-            return acc
-
-        def deplete(self, int n_depletion):
-            return unit_salvage * self.substract(n_depletion)
-
-        def hold(self):
-            return unit_hold * sum(self.state)
-
-        def order(self, int n_order):
-            self.state.append(n_order)
-            return unit_order * n_order
-
-        def sell(self, int n_demand):
-            return unit_price * self.substract(n_demand)
-
-        def dispose(self):
-            return unit_disposal * self.state.pop(0)
-
-        def revenue(self, int n_depletion, int n_order, int n_demand):
-            return (self.deplete(n_depletion) +
-                    self.hold() +
-                    discount * (self.order(n_order) +
-                                self.sell(n_demand) +
-                                self.dispose()))
-
-        def children(self, int capacity):
-            cdef int i, x
-            for i, x in enumerate(self.state):
-                if x != 0:
-                    break
-            for j, x in enumerate(self.state):
-                if j > i:
-                    break
-                new_state = list(self.state)
-                assert x < capacity
-                if x == capacity-1:
-                    pass
-                else:
-                    new_state[j] += 1
-                    yield State(*new_state)
-
         def copy(self):
             return self.__class__(*self.state)
 
     return State
+"""

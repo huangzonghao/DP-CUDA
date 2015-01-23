@@ -1,21 +1,21 @@
 # -*- encoding: utf-8 -*-
-from dp_state import StateFactory
+from array import array
+
+import dp_state
 
 
 def test_substract():
-    State = StateFactory()
+    state = array('i', [1, 1, 0, 0])
+    assert dp_state.substract(state, 2, 4) == 2
+    assert list(state) == [0, 0, 0, 0]
 
-    state = State(1, 1, 0, 0)
-    assert state.substract(2) == 2
-    assert state == [0, 0, 0, 0]
+    state = array('i', [1, 1, 0, 0])
+    assert dp_state.substract(state, 3, 4) == 2
+    assert list(state) == [0, 0, 0, 0]
 
-    state = State(1, 1, 0, 0)
-    assert state.substract(3) == 2
-    assert state == [0, 0, 0, 0]
-
-    state = State(1, 0, 0, 3)
-    assert state.substract(2) == 2
-    assert state == [0, 0, 0, 2]
+    state = array('i', [1, 0, 0, 3])
+    assert dp_state.substract(state, 2, 4) == 2
+    assert list(state) == [0, 0, 0, 2]
 
     return 'Good'
 
@@ -28,21 +28,33 @@ def test_revenue():
     unit_disposal = -2.0
     discount = 0.95
 
-    State = StateFactory(unit_salvage,
-                         unit_hold,
-                         unit_order,
-                         unit_price,
-                         unit_disposal,
-                         discount)
+    state = array('i', [2, 3, 4, 0])
+    revenue = dp_state.revenue(state, 1, 2, 3,
+                               unit_salvage,
+                               unit_hold,
+                               unit_order,
+                               unit_price,
+                               unit_disposal,
+                               discount,
+                               5, 4)
+    assert abs(5.55 - revenue < 1e-6)
+    assert list(state) == [0, 1, 4, 2]
 
-    state = State(2, 3, 4)
-    assert abs(5.55 - state.revenue(1, 2, 3) < 1e-6)
-
-    state = State(1, 0, 0, 3)
-    assert abs(8.05 - state.revenue(1, 2, 3) < 1e-6)
+    state = array('i', [1, 0, 0, 3, 0])
+    revenue = dp_state.revenue(state, 1, 2, 3,
+                               unit_salvage,
+                               unit_hold,
+                               unit_order,
+                               unit_price,
+                               unit_disposal,
+                               discount,
+                               4, 5)
+    assert list(state) == [0, 0, 0, 0, 2]
+    assert abs(8.05 - revenue < 1e-6)
 
     return 'Good'
 
+'''
 
 def test_children():
     State = StateFactory()
@@ -58,10 +70,11 @@ def test_children():
 
     return 'Good'
 
+'''
 
 if __name__ == '__main__':
     print 'Testing state methods'
     print 'Testing subtract...', test_substract()
     print 'Testing revenue...', test_revenue()
-    print 'Testing children...', test_children()
+    # print 'Testing children...', test_children()
     print 'All tests passed!'

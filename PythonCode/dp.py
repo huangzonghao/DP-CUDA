@@ -64,6 +64,7 @@ def simulation():
                                      unit_disposal,
                                      discount,
                                      n_capacity,
+                                     n_dimension,
                                      max_hold,
                                      verbosity)
             current_utility[current_index] = optimal_value

@@ -2,23 +2,27 @@
 from __future__ import division
 from __future__ import print_function
 
+from array import array
+from cpython cimport array
+
 import numpy as np
 
-from dp_state import StateFactory
+import dp_state
 
 
 def optimize(current_index,
              demands,
              future_utility,
-             unit_salvage,
-             unit_hold,
-             unit_order,
-             unit_price,
-             unit_disposal,
-             discount,
-             n_capacity,
-             max_hold,
-             verbosity=0):
+             double unit_salvage,
+             double unit_hold,
+             double unit_order,
+             double unit_price,
+             double unit_disposal,
+             double discount,
+             int n_capacity,
+             int n_dimension,
+             int max_hold,
+             int verbosity=0):
 
     '''
     Exhaustive search of best n_depletion and n_order.
@@ -30,14 +34,6 @@ def optimize(current_index,
     Return:
         maximum: the maximum utility of current_index
     '''
-    # The State class embedded with parameters
-    State = StateFactory(unit_salvage,
-                         unit_hold,
-                         unit_order,
-                         unit_price,
-                         unit_disposal,
-                         discount)
-
     holding = sum(current_index)
     at_least_deplete = max(holding - max_hold, 0)
 
@@ -49,12 +45,23 @@ def optimize(current_index,
             objective = []
             for n_demand in demands:
                 # Construct new State instance on each call of revenue
-                state = State(*current_index)
+                state = array('i', current_index + (0,))
                 # The state is changed within state.revenue() call
-                revenue = state.revenue(n_depletion, n_order, n_demand)
+                revenue = dp_state.revenue(state,
+                                           n_depletion,
+                                           n_order,
+                                           n_demand,
+                                           unit_salvage,
+                                           unit_hold,
+                                           unit_order,
+                                           unit_price,
+                                           unit_disposal,
+                                           discount,
+                                           n_capacity,
+                                           n_dimension+1)
                 # Just look it up in last utility array
                 objective.append(revenue +
-                                 discount * future_utility[tuple(state.state)])
+                                 discount * future_utility[tuple(state[1:])])
 
             # Taking empirical expectation
             expectation = sum(objective) / len(objective)
