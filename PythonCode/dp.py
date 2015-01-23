@@ -6,7 +6,7 @@ from ConfigParser import ConfigParser
 import numpy as np
 import scipy.stats
 
-from optimization import optimize
+from dp_optimization import optimize
 
 
 def simulation():

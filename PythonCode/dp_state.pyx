@@ -1,12 +1,12 @@
 # -*- encoding: utf-8 -*-
 
 
-def StateFactory(unit_salvage=0,
-                 unit_hold=0,
-                 unit_order=0,
-                 unit_price=0,
-                 unit_disposal=0,
-                 discount=0):
+def StateFactory(double unit_salvage=0.,
+                 double unit_hold=0.,
+                 double unit_order=0.,
+                 double unit_price=0.,
+                 double unit_disposal=0.,
+                 double discount=0.):
     '''
     State = StateFactory(config)
     state = State(4, 3, 2, 1)
@@ -46,7 +46,8 @@ def StateFactory(unit_salvage=0,
         def __reduce__(self):
             return (self.__class__, tuple(self.state))
 
-        def substract(self, num=0):
+        def substract(self, int num):
+            cdef int i, acc
             acc = 0
             for i in range(len(self.state)):
                 if num <= self.state[i]:
@@ -59,30 +60,31 @@ def StateFactory(unit_salvage=0,
                     self.state[i] = 0
             return acc
 
-        def deplete(self, n_depletion=0):
+        def deplete(self, int n_depletion):
             return unit_salvage * self.substract(n_depletion)
 
         def hold(self):
             return unit_hold * sum(self.state)
 
-        def order(self, n_order=0):
+        def order(self, int n_order):
             self.state.append(n_order)
             return unit_order * n_order
 
-        def sell(self, n_demand=0):
+        def sell(self, int n_demand):
             return unit_price * self.substract(n_demand)
 
         def dispose(self):
             return unit_disposal * self.state.pop(0)
 
-        def revenue(self, n_depletion, n_order, n_demand):
+        def revenue(self, int n_depletion, int n_order, int n_demand):
             return (self.deplete(n_depletion) +
                     self.hold() +
                     discount * (self.order(n_order) +
                                 self.sell(n_demand) +
                                 self.dispose()))
 
-        def children(self, capacity):
+        def children(self, int capacity):
+            cdef int i, j, x
             for i, x in enumerate(self.state):
                 if x != 0:
                     break
@@ -99,68 +101,3 @@ def StateFactory(unit_salvage=0,
             return self.__class__(*self.state)
 
     return State
-
-
-def test_substract():
-    State = StateFactory()
-
-    state = State(1, 1, 0, 0)
-    assert state.substract(2) == 2
-    assert state == [0, 0, 0, 0]
-
-    state = State(1, 1, 0, 0)
-    assert state.substract(3) == 2
-    assert state == [0, 0, 0, 0]
-
-    state = State(1, 0, 0, 3)
-    assert state.substract(2) == 2
-    assert state == [0, 0, 0, 2]
-
-    return 'Good'
-
-
-def test_revenue():
-    unit_salvage = 1.0
-    unit_hold = -0.5
-    unit_order = -3.0
-    unit_price = 5.0
-    unit_disposal = -2.0
-    discount = 0.95
-
-    State = StateFactory(unit_salvage,
-                         unit_hold,
-                         unit_order,
-                         unit_price,
-                         unit_disposal,
-                         discount)
-
-    state = State(2, 3, 4)
-    assert abs(5.55 - state.revenue(1, 2, 3) < 1e-6)
-
-    state = State(1, 0, 0, 3)
-    assert abs(8.05 - state.revenue(1, 2, 3) < 1e-6)
-
-    return 'Good'
-
-
-def test_children():
-    State = StateFactory()
-
-    state = State(2, 3, 4)
-    assert list(state.children(5)) == [[3, 3, 4]]
-
-    state = State(0, 1, 3)
-    assert list(state.children(5)) == [[1, 1, 3], [0, 2, 3]]
-
-    state = State(0, 0, 4)
-    assert list(state.children(5)) == [[1, 0, 4], [0, 1, 4]]
-
-    return 'Good'
-
-
-if __name__ == '__main__':
-    print 'Testing state methods'
-    print 'Testing subtract...', test_substract()
-    print 'Testing revenue...', test_revenue()
-    print 'Testing children...', test_children()
-    print 'All tests passed!'

@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import numpy as np
 
-from state import StateFactory
+from dp_state import StateFactory
 
 
 def optimize(current_index,
