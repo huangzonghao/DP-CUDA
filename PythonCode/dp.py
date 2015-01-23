@@ -33,7 +33,8 @@ def simulation():
     verbosity = config.getint('Debug', 'Verbosity')
 
     # Construct demand matrix
-    demand_matrix = scipy.stats.poisson.rvs(drate, size=(n_period, n_sample))
+    # demand_matrix = scipy.stats.poisson.rvs(drate, size=(n_period, n_sample))
+    demand_matrix = np.ones((n_period, n_sample)) * drate
 
     if verbosity > 0:
         print('Start with demand sample: {}'.format(demand_matrix))

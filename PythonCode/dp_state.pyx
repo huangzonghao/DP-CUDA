@@ -35,7 +35,7 @@ def StateFactory(double unit_salvage=0.,
             if isinstance(other, self.__class__):
                 return self.state == other.state
             else:
-                return self.state == list(other)
+                return list(self.state) == list(other)
 
         def __repr__(self):
             return repr(self.state)
@@ -84,12 +84,14 @@ def StateFactory(double unit_salvage=0.,
                                 self.dispose()))
 
         def children(self, int capacity):
-            cdef int i, j, x
+            cdef int i, x
             for i, x in enumerate(self.state):
                 if x != 0:
                     break
-            for j, x in enumerate(self.state[:i+1]):
-                new_state = self.state[:]
+            for j, x in enumerate(self.state):
+                if j > i:
+                    break
+                new_state = list(self.state)
                 assert x < capacity
                 if x == capacity-1:
                     pass

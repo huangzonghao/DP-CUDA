@@ -3,4 +3,4 @@ all:
 	python ./test_dp_state.py
 
 clean:
-	rm *.so *.c
+	rm -f *.so *.c
