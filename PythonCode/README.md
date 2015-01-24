@@ -6,4 +6,6 @@ This implementation uses Cython to annotate and compile Python code.
 ``python test_dp_state.py`` for unit testing state methods.
 ``python dp.py`` for running DP.
 
-Configuration is in ``config.ini file``.
+Configuration is in ``config.ini`` file.
+
+Remember to clean things up with ``make clean``.
