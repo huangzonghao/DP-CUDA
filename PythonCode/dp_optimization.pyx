@@ -40,27 +40,24 @@ def optimize(current_index,
     Return:
         maximum: the maximum utility of current_index
     '''
-    cdef np.intp_t i, n = demands.shape[0]
+    cdef np.intp_t i, n_sample = demands.shape[0]
     cdef int n_depletion, n_order
     cdef int z, q
-    cdef double revenue, expectation
+    cdef double revenue, objective
 
     cdef array.array current_state = array('i', current_index + (0,))
+    cdef array.array state = array('i')
+
     cdef int holding = dp_state.csum(current_state, n_dimension + 1)
     cdef int at_least_deplete = dp_state.cmax(holding - max_hold, 0)
 
-    cdef array.array state
-
     cdef double maximum = -INFINITY
-
-    cdef np.ndarray[double, ndim=1, mode='c'] objective
 
     for n_depletion in range(at_least_deplete, holding + 1):
         for n_order in range(n_capacity):
-            objective = np.empty((n,), dtype=np.double)
-            for i in range(n):
-                # Construct new State instance on each call of revenue
-                state = array.copy(current_state)
+            objective = 0.0
+            for i in range(n_sample):
+                state[:] = current_state
                 # The state is changed within state.revenue() call
                 revenue = dp_state.revenue(state,
                                            n_depletion,
@@ -75,18 +72,15 @@ def optimize(current_index,
                                            n_capacity,
                                            n_dimension + 1)
                 # Just look it up in last utility array
-                objective[i] = (revenue +
-                                discount * future_utility[tuple(state[1:])])
-
-            # Taking empirical expectation
-            expectation = np.mean(objective)
+                objective += (revenue +
+                              discount * future_utility[tuple(state[1:])])
 
             # Simply taking the maximum without any complex heuristics
-            if expectation > maximum:
+            if objective > maximum:
                 z, q = n_depletion, n_order
-                maximum = expectation
+                maximum = objective
 
-    if verbosity > 0:
+    if verbosity >= 10:
         print('Optimizing {}, result {}, value {}'.format(current_index,
-                                                          (z, q), maximum))
-    return maximum
+                                                          (z, q), maximum / n_sample))
+    return maximum / n_sample

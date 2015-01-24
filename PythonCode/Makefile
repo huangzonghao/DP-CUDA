@@ -5,4 +5,4 @@ all:
 
 clean:
 	python setup.py clean
-	rm -f *.so *.c *.html
+	rm -f *.so *.c *.pyc *.html
