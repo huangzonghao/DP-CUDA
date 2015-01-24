@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 from __future__ import print_function
 
+import datetime
 from ConfigParser import ConfigParser
 
 import numpy as np
@@ -33,30 +34,26 @@ def simulation():
     verbosity = config.getint('Debug', 'Verbosity')
 
     # Construct demand matrix
-    # demand_matrix = scipy.stats.poisson.rvs(drate, size=(n_period, n_sample))
-    demand_matrix = np.ones((n_period, n_sample)) * drate
-    demand_matrix = demand_matrix.astype(np.int32)
-
-    if verbosity > 0:
-        print('Start with demand sample: {}'.format(demand_matrix))
+    demand_matrix = scipy.stats.poisson.rvs(drate, size=(n_period,
+                                                         n_sample)).astype(np.int32)
 
     shape = (n_capacity,) * n_dimension
 
     # Boundry values of utitility is just depletion of all remaining goods
-    # Using a trick of np.where() to return all multi-indices, then sum them up
-    future_utility = unit_salvage * \
-        np.vstack(np.where(np.ones(shape))).sum(axis=0).reshape(shape)
+    current_utility = np.empty(shape)
+    future_utility = unit_salvage * np.indices(shape).sum(axis=0)
 
     # Main loop
-    for epoch, demands in enumerate(demand_matrix):
-        current_utility = np.empty(shape)
-        current_utility[:] = -np.infty
+    for epoch in xrange(n_period):
+        if verbosity > 0:
+            print("[{}] Starting epoch {}".format(datetime.datetime.now(), epoch))
 
-        iterator = np.nditer(future_utility, order='C', flags=['multi_index'])
-        for _ in iterator:
-            current_index = iterator.multi_index
+        for current_index in np.ndindex(*shape):
+            if verbosity > 0 and np.ravel_multi_index(current_index, shape) % 100 == 0:
+                print("[{}] Optimizing {}".format(datetime.datetime.now(), current_index))
+
             optimal_value = optimize(current_index,
-                                     demands,
+                                     demand_matrix[epoch],
                                      future_utility,
                                      unit_salvage,
                                      unit_hold,
@@ -68,10 +65,12 @@ def simulation():
                                      n_dimension,
                                      max_hold,
                                      verbosity)
-            current_utility[current_index] = optimal_value
-        current_utility = future_utility
 
-    return current_utility
+            current_utility[current_index] = optimal_value
+
+        future_utility[:] = current_utility
+
+    return future_utility
 
 
 if __name__ == '__main__':

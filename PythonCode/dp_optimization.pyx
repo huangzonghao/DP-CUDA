@@ -1,27 +1,34 @@
 # -*- encoding: utf-8 -*-
-
+from __future__ import division
 from __future__ import print_function
 
-import array
+from array import array
+from cpython cimport array
 
 import numpy as np
+cimport numpy as np
+from numpy.math cimport INFINITY
 
-import dp_state
+cimport cython
+
+cimport dp_state
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
 def optimize(current_index,
-             demands,
-             future_utility,
-             unit_salvage,
-             unit_hold,
-             unit_order,
-             unit_price,
-             unit_disposal,
-             discount,
-             n_capacity,
-             n_dimension,
-             max_hold,
-             verbosity=0):
+             np.ndarray[int, ndim=1, mode='c'] demands,
+             np.ndarray[double, ndim=4, mode='c'] future_utility,
+             double unit_salvage,
+             double unit_hold,
+             double unit_order,
+             double unit_price,
+             double unit_disposal,
+             double discount,
+             int n_capacity,
+             int n_dimension,
+             int max_hold,
+             int verbosity=0):
 
     '''
     Exhaustive search of best n_depletion and n_order.
@@ -33,20 +40,24 @@ def optimize(current_index,
     Return:
         maximum: the maximum utility of current_index
     '''
-    n_sample = demands.shape[0]
+    cdef np.intp_t i, n_sample = demands.shape[0]
+    cdef int n_depletion, n_order
+    cdef int z, q
+    cdef double revenue, objective
 
-    current_state = array.array('i', current_index + (0,))
-    holding = sum(current_state, n_dimension + 1)
-    at_least_deplete = max(holding - max_hold, 0)
+    cdef array.array current_state = array('i', current_index + (0,))
+    cdef array.array state = array('i')
 
-    maximum = -np.infty
+    cdef int holding = dp_state.csum(current_state, n_dimension + 1)
+    cdef int at_least_deplete = dp_state.cmax(holding - max_hold, 0)
+
+    cdef double maximum = -INFINITY
 
     for n_depletion in range(at_least_deplete, holding + 1):
         for n_order in range(n_capacity):
-            objective = np.empty((n_sample,), dtype=np.double)
+            objective = 0.0
             for i in range(n_sample):
-                # Construct new State instance on each call of revenue
-                state = current_state[:]
+                state[:] = current_state
                 # The state is changed within state.revenue() call
                 revenue = dp_state.revenue(state,
                                            n_depletion,
@@ -61,18 +72,15 @@ def optimize(current_index,
                                            n_capacity,
                                            n_dimension + 1)
                 # Just look it up in last utility array
-                objective[i] = (revenue +
-                                discount * future_utility[tuple(state[1:])])
-
-            # Taking empirical expectation
-            expectation = np.mean(objective)
+                objective += (revenue +
+                              discount * future_utility[tuple(state[1:])])
 
             # Simply taking the maximum without any complex heuristics
-            if expectation > maximum:
+            if objective > maximum:
                 z, q = n_depletion, n_order
-                maximum = expectation
+                maximum = objective
 
-    if verbosity > 0:
+    if verbosity >= 10:
         print('Optimizing {}, result {}, value {}'.format(current_index,
-                                                          (z, q), maximum))
-    return maximum
+                                                          (z, q), maximum / n_sample))
+    return maximum / n_sample
