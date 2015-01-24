@@ -156,7 +156,8 @@ threshold function to reduce computation.
 
 ### A sketch of threshold algorithm 
 
-- for t=1:T, do the following steps.
+- for t=1:T, do the following steps. (Essentially filling
+a \\(k ^m\\)-element table each step)
 - for i=m:1, for \\(y _m \le z _m ^{\ast},y _{m-1}
 \le z _{m-1} ^{\ast} (y _m),...,y _{i+1}
 \le z _{i+1} ^{\ast} (y _{i+2},...,y _m)\\),
@@ -164,4 +165,9 @@ threshold function to reduce computation.
 compute \\(z _i ^{\ast} (y _{i+1},...,y _m),~ q _i ^{\ast}
 (z _i ^{\ast}, y _{i+1},..., y _m)\\).
 
-- for \\(x=(x _1,...,x _m)\\), find \\(z ^{\ast} (x),~ q ^{\ast}(x).\\) Update \\(V(x)\\).
+It should be noted that to compute each threshold value,
+the monotonicity property that \\(z _i ^{\ast} (y _{i+1},...,y _m)\\) is decreasing function of each variable
+could be used. How to efficiently take this advantage is
+to be discussed. 
+
+- for \\(x=(x _1,...,x _m)\\), use the computed threshold values to find \\(z ^{\ast} (x),~ q ^{\ast}(x).\\) Update \\(V(x)\\).
