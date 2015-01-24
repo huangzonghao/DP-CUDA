@@ -40,6 +40,7 @@ def simulation():
     shape = (n_capacity,) * n_dimension
 
     # Boundry values of utitility is just depletion of all remaining goods
+    current_utility = np.empty(shape)
     future_utility = unit_salvage * np.indices(shape).sum(axis=0)
 
     # Main loop
@@ -47,7 +48,6 @@ def simulation():
         if verbosity > 0:
             print("[{}] Starting epoch {}".format(datetime.datetime.now(), epoch))
 
-        current_utility = np.empty(shape)
         for current_index in np.ndindex(*shape):
             if verbosity > 0 and np.ravel_multi_index(current_index, shape) % 100 == 0:
                 print("[{}] Optimizing {}".format(datetime.datetime.now(), current_index))
