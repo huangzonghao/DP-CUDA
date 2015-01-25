@@ -16,9 +16,10 @@ cimport dp_state
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def optimize(current_index,
+@cython.cdivision(True)
+def optimize(int encoded_current_state,
              np.ndarray[int, ndim=1, mode='c'] demands,
-             np.ndarray[double, ndim=4, mode='c'] future_utility,
+             np.ndarray[double, ndim=1, mode='c'] future_utility,
              double unit_salvage,
              double unit_hold,
              double unit_order,
@@ -40,40 +41,52 @@ def optimize(current_index,
     Return:
         maximum: the maximum utility of current_index
     '''
+
     cdef np.intp_t i, n_sample = demands.shape[0]
     cdef int n_depletion, n_order
     cdef int z, q
     cdef double revenue, objective
 
-    cdef array.array current_state = array('i', current_index + (0,))
-    cdef array.array state = array('i')
+    cdef int encoded_future_state
 
-    cdef int holding = dp_state.csum(current_state, n_dimension + 1)
-    cdef int at_least_deplete = dp_state.cmax(holding - max_hold, 0)
+    cdef int holding
+    cdef int at_least_deplete
 
     cdef double maximum = -INFINITY
+
+    cdef array.array transient_state = array('i')
+    cdef array.array current_state = array.clone(transient_state,
+                                                 n_dimension+1, False)
+
+    # initialize current_state
+    dp_state.decode(current_state, encoded_current_state,
+                    n_capacity, n_dimension)
+    holding = dp_state.csum(current_state, n_dimension + 1)
+    at_least_deplete = dp_state.cmax(holding - max_hold, 0)
 
     for n_depletion in range(at_least_deplete, holding + 1):
         for n_order in range(n_capacity):
             objective = 0.0
             for i in range(n_sample):
-                state[:] = current_state
+                transient_state[:] = current_state
+                revenue = dp_state.revenue(transient_state,
+                                        n_depletion,
+                                        n_order,
+                                        demands[i],
+                                        unit_salvage,
+                                        unit_hold,
+                                        unit_order,
+                                        unit_price,
+                                        unit_disposal,
+                                        discount,
+                                        n_capacity,
+                                        n_dimension + 1)
                 # The state is changed within state.revenue() call
-                revenue = dp_state.revenue(state,
-                                           n_depletion,
-                                           n_order,
-                                           demands[i],
-                                           unit_salvage,
-                                           unit_hold,
-                                           unit_order,
-                                           unit_price,
-                                           unit_disposal,
-                                           discount,
-                                           n_capacity,
-                                           n_dimension + 1)
-                # Just look it up in last utility array
+                encoded_future_state = dp_state.encode(transient_state,
+                                                    n_capacity,
+                                                    n_dimension)
                 objective += (revenue +
-                              discount * future_utility[tuple(state[1:])])
+                            discount * future_utility[encoded_future_state])
 
             # Simply taking the maximum without any complex heuristics
             if objective > maximum:
@@ -81,6 +94,5 @@ def optimize(current_index,
                 maximum = objective
 
     if verbosity >= 10:
-        print('Optimizing {}, result {}, value {}'.format(current_index,
-                                                          (z, q), maximum / n_sample))
+        print('Result {}, value {}'.format((z, q), maximum / n_sample))
     return maximum / n_sample

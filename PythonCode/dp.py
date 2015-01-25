@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 from __future__ import print_function
 
-import datetime
+from datetime import datetime
 from ConfigParser import ConfigParser
 
 import numpy as np
@@ -35,7 +35,8 @@ def simulation():
 
     # Construct demand matrix
     demand_matrix = scipy.stats.poisson.rvs(drate, size=(n_period,
-                                                         n_sample)).astype(np.int32)
+                                                         n_sample)
+                                           ).astype(np.int32)
 
     shape = (n_capacity,) * n_dimension
 
@@ -43,18 +44,24 @@ def simulation():
     current_utility = np.empty(shape)
     future_utility = unit_salvage * np.indices(shape).sum(axis=0)
 
+
     # Main loop
     for epoch in xrange(n_period):
         if verbosity > 0:
-            print("[{}] Starting epoch {}".format(datetime.datetime.now(), epoch))
+            print(("[{}] Starting epoch {} " +
+                  "with demand {}").format(datetime.now(),
+                                           epoch,
+                                           demand_matrix[epoch]))
 
         for current_index in np.ndindex(*shape):
-            if verbosity > 0 and np.ravel_multi_index(current_index, shape) % 100 == 0:
-                print("[{}] Optimizing {}".format(datetime.datetime.now(), current_index))
+            if verbosity >= 10:
+                print("[{}] Optimizing {}".format(datetime.now(),
+                                                  current_index), end=', ')
 
-            optimal_value = optimize(current_index,
+            encoded_state = np.ravel_multi_index(current_index, shape)
+            optimal_value = optimize(encoded_state,
                                      demand_matrix[epoch],
-                                     future_utility,
+                                     future_utility.ravel(),
                                      unit_salvage,
                                      unit_hold,
                                      unit_order,

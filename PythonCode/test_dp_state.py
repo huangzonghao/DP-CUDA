@@ -4,6 +4,30 @@ from array import array
 import dp_state
 
 
+def test_decode():
+    # n_capacity = 10, n_dimension = 2
+    state = array('i', [0, 0, 0])  # empty array
+    dp_state.py_decode(state, 12, 10, 2)
+    assert list(state) == [1, 2, 0]
+
+    # n_capacity = 3, n_dimension = 2
+    state = array('i', [0, 0, 0])  # empty array
+    dp_state.py_decode(state, 5, 3, 2)
+    assert list(state) == [1, 2, 0]
+
+    return 'Good'
+
+
+def test_encode():
+    # n_capacity = 10, n_dimension = 2
+    assert dp_state.encode(array('i', [0, 1, 2]), 10, 2) == 12
+
+    # n_capacity = 3, n_dimension = 2
+    assert dp_state.encode(array('i', [0, 1, 2]), 3, 2) == 5
+
+    return 'Good'
+
+
 def test_substract():
     state = array('i', [1, 1, 0, 0])
     assert dp_state.substract(state, 2, 4) == 2
@@ -74,6 +98,8 @@ def test_children():
 
 if __name__ == '__main__':
     print 'Testing state methods'
+    print 'Testing decode...', test_decode()
+    print 'Testing encode...', test_encode()
     print 'Testing subtract...', test_substract()
     print 'Testing revenue...', test_revenue()
     # print 'Testing children...', test_children()
