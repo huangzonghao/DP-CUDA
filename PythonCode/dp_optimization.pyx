@@ -2,14 +2,10 @@
 from __future__ import division
 from __future__ import print_function
 
-from array import array
-from cpython cimport array
-
-import numpy as np
-cimport numpy as np
 from numpy.math cimport INFINITY
 
 cimport cython
+from cython.view cimport array
 
 cimport dp_state
 
@@ -18,8 +14,8 @@ cimport dp_state
 @cython.wraparound(False)
 @cython.cdivision(True)
 def optimize(int encoded_current_state,
-             np.ndarray[int, ndim=1, mode='c'] demands,
-             np.ndarray[double, ndim=1, mode='c'] future_utility,
+             int[:] demands,
+             double[:] future_utility,
              double unit_salvage,
              double unit_hold,
              double unit_order,
@@ -42,7 +38,7 @@ def optimize(int encoded_current_state,
         maximum: the maximum utility of current_index
     '''
 
-    cdef np.intp_t i, n_sample = demands.shape[0]
+    cdef int i, n_sample = demands.shape[0]
     cdef int n_depletion, n_order
     cdef int z, q
     cdef double revenue, objective
@@ -54,9 +50,12 @@ def optimize(int encoded_current_state,
 
     cdef double maximum = -INFINITY
 
-    cdef array.array transient_state = array('i')
-    cdef array.array current_state = array.clone(transient_state,
-                                                 n_dimension+1, False)
+    cdef int[:] transient_state = array(shape=(n_dimension+1,),
+                                        itemsize=sizeof(int),
+                                        format="i")
+    cdef int[:] current_state = array(shape=(n_dimension+1,),
+                                      itemsize=sizeof(int),
+                                      format="i")
 
     # initialize current_state
     dp_state.decode(current_state, encoded_current_state,
@@ -70,23 +69,23 @@ def optimize(int encoded_current_state,
             for i in range(n_sample):
                 transient_state[:] = current_state
                 revenue = dp_state.revenue(transient_state,
-                                        n_depletion,
-                                        n_order,
-                                        demands[i],
-                                        unit_salvage,
-                                        unit_hold,
-                                        unit_order,
-                                        unit_price,
-                                        unit_disposal,
-                                        discount,
-                                        n_capacity,
-                                        n_dimension + 1)
+                                           n_depletion,
+                                           n_order,
+                                           demands[i],
+                                           unit_salvage,
+                                           unit_hold,
+                                           unit_order,
+                                           unit_price,
+                                           unit_disposal,
+                                           discount,
+                                           n_capacity,
+                                           n_dimension + 1)
                 # The state is changed within state.revenue() call
                 encoded_future_state = dp_state.encode(transient_state,
-                                                    n_capacity,
-                                                    n_dimension)
+                                                       n_capacity,
+                                                       n_dimension)
                 objective += (revenue +
-                            discount * future_utility[encoded_future_state])
+                              discount * future_utility[encoded_future_state])
 
             # Simply taking the maximum without any complex heuristics
             if objective > maximum:
@@ -95,4 +94,5 @@ def optimize(int encoded_current_state,
 
     if verbosity >= 10:
         print('Result {}, value {}'.format((z, q), maximum / n_sample))
+
     return maximum / n_sample
