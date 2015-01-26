@@ -7,7 +7,9 @@ from ConfigParser import ConfigParser
 import numpy as np
 import scipy.stats
 
-from dp_optimization import optimize
+from joblib import Parallel, delayed
+
+from dp_optimization import task
 
 
 def simulation():
@@ -32,6 +34,7 @@ def simulation():
     drate = config.getfloat('Simulation', 'DemandRate')
 
     verbosity = config.getint('Debug', 'Verbosity')
+    n_jobs = config.getint('Debug', 'NumberJobs')
 
     # Construct demand matrix
     demand_matrix = scipy.stats.poisson.rvs(drate, size=(n_period,
@@ -44,6 +47,8 @@ def simulation():
     current_utility = np.empty(shape)
     future_utility = unit_salvage * np.indices(shape).sum(axis=0)
 
+    dispatch = Parallel(n_jobs=n_jobs, backend='threading', verbose=verbosity)
+
 
     # Main loop
     for epoch in xrange(n_period):
@@ -53,27 +58,25 @@ def simulation():
                                            epoch,
                                            demand_matrix[epoch]))
 
-        for current_index in np.ndindex(*shape):
-            if verbosity >= 10:
-                print("[{}] Optimizing {}".format(datetime.now(),
-                                                  current_index), end=', ')
+        current_utility_ravel = current_utility.ravel()
+        future_utility_ravel = future_utility.ravel()
 
-            encoded_state = np.ravel_multi_index(current_index, shape)
-            optimal_value = optimize(encoded_state,
-                                     demand_matrix[epoch],
-                                     future_utility.ravel(),
-                                     unit_salvage,
-                                     unit_hold,
-                                     unit_order,
-                                     unit_price,
-                                     unit_disposal,
-                                     discount,
-                                     n_capacity,
-                                     n_dimension,
-                                     max_hold,
-                                     verbosity)
-
-            current_utility[current_index] = optimal_value
+        dispatch(delayed(task)(encoded_states,
+                               demand_matrix[epoch],
+                               current_utility_ravel,
+                               future_utility_ravel,
+                               unit_salvage,
+                               unit_hold,
+                               unit_order,
+                               unit_price,
+                               unit_disposal,
+                               discount,
+                               n_capacity,
+                               n_dimension,
+                               max_hold,
+                               verbosity) for encoded_states in
+                               [xrange(i, n_capacity**n_dimension, n_jobs)
+                                   for i in range(n_jobs)])
 
         future_utility[:] = current_utility
 
