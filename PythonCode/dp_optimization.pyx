@@ -31,30 +31,32 @@ cpdef task(int[:] demands,
            int job_number,
            int n_job,
            int verbosity=0):
-    cdef int index
+    cdef int index = job_number
     cdef int[:] transient_state = array(shape=(n_dimension+1,),
                                         itemsize=sizeof(int),
                                         format="i")
     cdef int[:] current_state = array(shape=(n_dimension+1,),
                                       itemsize=sizeof(int),
                                       format="i")
-    for index in range(job_number, n_capacity**n_dimension, n_job):
-        optimal_value = optimize(index,
-                                 current_state,
-                                 transient_state,
-                                 demands,
-                                 future_utility_ravel,
-                                 unit_salvage,
-                                 unit_hold,
-                                 unit_order,
-                                 unit_price,
-                                 unit_disposal,
-                                 discount,
-                                 n_capacity,
-                                 n_dimension,
-                                 max_hold,
-                                 verbosity)
-        current_utility_ravel[index] = optimal_value
+    with nogil:
+        while index < n_capacity**n_dimension:
+            optimal_value = optimize(index,
+                                    current_state,
+                                    transient_state,
+                                    demands,
+                                    future_utility_ravel,
+                                    unit_salvage,
+                                    unit_hold,
+                                    unit_order,
+                                    unit_price,
+                                    unit_disposal,
+                                    discount,
+                                    n_capacity,
+                                    n_dimension,
+                                    max_hold,
+                                    verbosity)
+            current_utility_ravel[index] = optimal_value
+            index += n_job
 
 
 cdef double optimize(int encoded_current_state,
@@ -71,7 +73,7 @@ cdef double optimize(int encoded_current_state,
                      int n_capacity,
                      int n_dimension,
                      int max_hold,
-                     int verbosity):
+                     int verbosity) nogil:
 
     '''
     Exhaustive search of best n_depletion and n_order.
@@ -97,42 +99,42 @@ cdef double optimize(int encoded_current_state,
     cdef double maximum = -INFINITY
 
 
-    with nogil:
-        # initialize current_state
-        dp_state.decode(current_state, encoded_current_state,
-                        n_capacity, n_dimension)
-        holding = dp_state.csum(current_state, n_dimension + 1)
-        at_least_deplete = dp_state.cmax(holding - max_hold, 0)
+    # initialize current_state
+    dp_state.decode(current_state, encoded_current_state,
+                    n_capacity, n_dimension)
+    holding = dp_state.csum(current_state, n_dimension + 1)
+    at_least_deplete = dp_state.cmax(holding - max_hold, 0)
 
-        for n_depletion in range(at_least_deplete, holding + 1):
-            for n_order in range(n_capacity):
-                objective = 0.0
-                for i in range(n_sample):
-                    transient_state[:] = current_state
-                    revenue = dp_state.revenue(transient_state,
-                                               n_depletion,
-                                               n_order,
-                                               demands[i],
-                                               unit_salvage,
-                                               unit_hold,
-                                               unit_order,
-                                               unit_price,
-                                               unit_disposal,
-                                               discount,
-                                               n_capacity,
-                                               n_dimension + 1)
-                    # The state is changed within state.revenue() call
-                    encoded_future_state = dp_state.encode(transient_state,
-                                                           n_capacity,
-                                                           n_dimension)
-                    objective += (revenue +
-                                 discount * future_utility[encoded_future_state])
+    for n_depletion in range(at_least_deplete, holding + 1):
+        for n_order in range(n_capacity):
+            objective = 0.0
+            for i in range(n_sample):
+                transient_state[:] = current_state
+                revenue = dp_state.revenue(transient_state,
+                                            n_depletion,
+                                            n_order,
+                                            demands[i],
+                                            unit_salvage,
+                                            unit_hold,
+                                            unit_order,
+                                            unit_price,
+                                            unit_disposal,
+                                            discount,
+                                            n_capacity,
+                                            n_dimension + 1)
+                # The state is changed within state.revenue() call
+                encoded_future_state = dp_state.encode(transient_state,
+                                                        n_capacity,
+                                                        n_dimension)
+                objective += (revenue +
+                                discount * future_utility[encoded_future_state])
 
-                # Simply taking the maximum without any complex heuristics
-                if objective > maximum:
-                    z, q = n_depletion, n_order
-                    maximum = objective
+            # Simply taking the maximum without any complex heuristics
+            if objective > maximum:
+                z, q = n_depletion, n_order
+                maximum = objective
 
+    '''
     if verbosity >= 100:
         state = np.unravel_index(encoded_current_state, (n_capacity,)*n_dimension)
         print("[{}] Optimizing {}".format(datetime.now(),
@@ -140,4 +142,5 @@ cdef double optimize(int encoded_current_state,
         print('Result {}, value {}'.format((z, q), maximum / n_sample))
 
     with nogil:
-        return maximum / n_sample
+    '''
+    return maximum / n_sample

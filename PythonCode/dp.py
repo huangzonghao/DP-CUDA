@@ -73,9 +73,9 @@ def simulation():
                                n_capacity,
                                n_dimension,
                                max_hold,
-                               index,
+                               job_number,
                                n_jobs,
-                               verbosity) for index in range(n_jobs))
+                               verbosity) for job_number in range(n_jobs))
 
         future_utility[:] = current_utility
 
