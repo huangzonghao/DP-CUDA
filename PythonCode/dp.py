@@ -61,8 +61,7 @@ def simulation():
         current_utility_ravel = current_utility.ravel()
         future_utility_ravel = future_utility.ravel()
 
-        dispatch(delayed(task)(encoded_states,
-                               demand_matrix[epoch],
+        dispatch(delayed(task)(demand_matrix[epoch],
                                current_utility_ravel,
                                future_utility_ravel,
                                unit_salvage,
@@ -74,9 +73,9 @@ def simulation():
                                n_capacity,
                                n_dimension,
                                max_hold,
-                               verbosity) for encoded_states in
-                               [xrange(i, n_capacity**n_dimension, n_jobs)
-                                   for i in range(n_jobs)])
+                               index,
+                               n_jobs,
+                               verbosity) for index in range(n_jobs))
 
         future_utility[:] = current_utility
 

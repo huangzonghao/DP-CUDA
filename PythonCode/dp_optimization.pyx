@@ -1,4 +1,6 @@
 # -*- encoding: utf-8 -*-
+# cython: boundscheck=False, wraparound=False, cdivision=True
+
 from __future__ import division
 from __future__ import print_function
 
@@ -14,22 +16,24 @@ from cython.view cimport array
 cimport dp_state
 
 
-cpdef task(encoded_states,
-           demands,
-           current_utility_ravel,
-           future_utility_ravel,
-           unit_salvage,
-           unit_hold,
-           unit_order,
-           unit_price,
-           unit_disposal,
-           discount,
-           n_capacity,
-           n_dimension,
-           max_hold,
-           verbosity=0):
-    for encoded_state in encoded_states:
-        optimal_value = optimize(encoded_state,
+cpdef task(int[:] demands,
+           double[:] current_utility_ravel,
+           double[:] future_utility_ravel,
+           double unit_salvage,
+           double unit_hold,
+           double unit_order,
+           double unit_price,
+           double unit_disposal,
+           double discount,
+           int n_capacity,
+           int n_dimension,
+           int max_hold,
+           int job_number,
+           int n_job,
+           int verbosity=0):
+    cdef int index
+    for index in range(job_number, n_capacity**n_dimension+1, n_job):
+        optimal_value = optimize(index,
                                  demands,
                                  future_utility_ravel,
                                  unit_salvage,
@@ -42,12 +46,9 @@ cpdef task(encoded_states,
                                  n_dimension,
                                  max_hold,
                                  verbosity)
-        current_utility_ravel[encoded_state] = optimal_value
+        current_utility_ravel[index] = optimal_value
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.cdivision(True)
 cdef double optimize(int encoded_current_state,
                      int[:] demands,
                      double[:] future_utility,
