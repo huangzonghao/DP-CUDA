@@ -32,8 +32,16 @@ cpdef task(int[:] demands,
            int n_job,
            int verbosity=0):
     cdef int index
-    for index in range(job_number, n_capacity**n_dimension+1, n_job):
+    cdef int[:] transient_state = array(shape=(n_dimension+1,),
+                                        itemsize=sizeof(int),
+                                        format="i")
+    cdef int[:] current_state = array(shape=(n_dimension+1,),
+                                      itemsize=sizeof(int),
+                                      format="i")
+    for index in range(job_number, n_capacity**n_dimension, n_job):
         optimal_value = optimize(index,
+                                 current_state,
+                                 transient_state,
                                  demands,
                                  future_utility_ravel,
                                  unit_salvage,
@@ -50,6 +58,8 @@ cpdef task(int[:] demands,
 
 
 cdef double optimize(int encoded_current_state,
+                     int[:] current_state,
+                     int[:] transient_state,
                      int[:] demands,
                      double[:] future_utility,
                      double unit_salvage,
@@ -86,15 +96,8 @@ cdef double optimize(int encoded_current_state,
 
     cdef double maximum = -INFINITY
 
-    cdef int[:] transient_state = array(shape=(n_dimension+1,),
-                                        itemsize=sizeof(int),
-                                        format="i")
-    cdef int[:] current_state = array(shape=(n_dimension+1,),
-                                      itemsize=sizeof(int),
-                                      format="i")
 
     with nogil:
-
         # initialize current_state
         dp_state.decode(current_state, encoded_current_state,
                         n_capacity, n_dimension)
@@ -136,4 +139,5 @@ cdef double optimize(int encoded_current_state,
                                             state), end=', ')
         print('Result {}, value {}'.format((z, q), maximum / n_sample))
 
-    return maximum / n_sample
+    with nogil:
+        return maximum / n_sample
