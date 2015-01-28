@@ -47,16 +47,15 @@ def simulation():
     current_utility = np.empty(shape)
     future_utility = unit_salvage * np.indices(shape).sum(axis=0)
 
-    dispatch = Parallel(n_jobs=n_jobs, backend='threading', verbose=verbosity)
+    dispatch = Parallel(n_jobs=n_jobs, backend='threading')
 
 
     # Main loop
     for epoch in xrange(n_period):
         if verbosity > 0:
-            print(("[{}] Starting epoch {} " +
-                  "with demand {}").format(datetime.now(),
-                                           epoch,
-                                           demand_matrix[epoch]))
+            print("[{}] Starting epoch {}".format(datetime.now(),
+                                                  epoch), end=', ')
+            print("with demand: ", ','.join(map(str, demand_matrix[epoch])))
 
         current_utility_ravel = current_utility.ravel()
         future_utility_ravel = future_utility.ravel()

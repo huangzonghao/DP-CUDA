@@ -16,6 +16,10 @@ from cython.view cimport array
 cimport dp_state
 
 
+cdef extern from "stdio.h":
+    int printf(char *, ...) nogil
+
+
 cpdef task(int[:] demands,
            double[:] current_utility_ravel,
            double[:] future_utility_ravel,
@@ -111,21 +115,21 @@ cdef double optimize(int encoded_current_state,
             for i in range(n_sample):
                 transient_state[:] = current_state
                 revenue = dp_state.revenue(transient_state,
-                                            n_depletion,
-                                            n_order,
-                                            demands[i],
-                                            unit_salvage,
-                                            unit_hold,
-                                            unit_order,
-                                            unit_price,
-                                            unit_disposal,
-                                            discount,
-                                            n_capacity,
-                                            n_dimension + 1)
+                                           n_depletion,
+                                           n_order,
+                                           demands[i],
+                                           unit_salvage,
+                                           unit_hold,
+                                           unit_order,
+                                           unit_price,
+                                           unit_disposal,
+                                           discount,
+                                           n_capacity,
+                                           n_dimension + 1)
                 # The state is changed within state.revenue() call
                 encoded_future_state = dp_state.encode(transient_state,
-                                                        n_capacity,
-                                                        n_dimension)
+                                                       n_capacity,
+                                                       n_dimension)
                 objective += (revenue +
                                 discount * future_utility[encoded_future_state])
 
@@ -134,13 +138,8 @@ cdef double optimize(int encoded_current_state,
                 z, q = n_depletion, n_order
                 maximum = objective
 
-    '''
     if verbosity >= 100:
-        state = np.unravel_index(encoded_current_state, (n_capacity,)*n_dimension)
-        print("[{}] Optimizing {}".format(datetime.now(),
-                                            state), end=', ')
-        print('Result {}, value {}'.format((z, q), maximum / n_sample))
-
-    with nogil:
-    '''
+        printf("State: %0*d, Result: (%d, %d), Value: %.2f\n", n_dimension,
+                                                               encoded_current_state,
+                                                               z, q, maximum/n_sample)
     return maximum / n_sample
