@@ -105,7 +105,6 @@ cdef double optimize(int encoded_current_state,
     cdef int encoded_future_state
 
     cdef int holding
-    cdef int at_least_deplete
 
     cdef double maximum = -INFINITY
 
@@ -117,9 +116,8 @@ cdef double optimize(int encoded_current_state,
     # Set limit of n_depletion
     # We are using hand written function in C to speed up
     holding = dp_state.csum(current_state, n_dimension + 1)
-    at_least_deplete = dp_state.cmax(holding - max_hold, 0)
 
-    for n_depletion in range(at_least_deplete, holding + 1):
+    for n_depletion in range(holding + 1):
         for n_order in range(n_capacity):
             objective = 0.0
             for i in range(n_sample):
