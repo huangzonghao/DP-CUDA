@@ -29,6 +29,7 @@ cdef void decode(int[:] state,
     for i in range(n_dimension-1, -1, -1):
         state[i] = encoded_state % n_capacity
         encoded_state /= n_capacity
+    # Set last digit to 0, before ordering
     state[n_dimension] = 0
 
 
@@ -42,16 +43,17 @@ def py_decode(int[:] state,
 cpdef int encode(int[:] state, int n_capacity, int n_dimension) nogil:
     cdef int i = 0
     cdef int acc = 0
+    # Don't count on 1st digit (which is 0 any way after depletion)
     for i in range(1, n_dimension+1):
         acc *= n_capacity
         acc += state[i]
     return acc
 
 
-cpdef int substract(int[:] state, int num, int n_dimension) nogil:
+cpdef int substract(int[:] state, int num, int size) nogil:
     cdef int i
     cdef int acc = 0
-    for i in range(n_dimension):
+    for i in range(size):
         if num <= state[i]:
             acc += num
             state[i] -= num
@@ -74,13 +76,13 @@ cdef inline double hold(int[:] state, double unit_hold, int n_dimension) nogil:
 
 cdef inline double order(int[:] state, int n_order,
                   double unit_order, int n_dimension) nogil:
-    state[n_dimension-1] = n_order
+    state[n_dimension] = n_order
     return unit_order * n_order
 
 
 cdef inline double sell(int[:] state, int n_demand,
                  double unit_price, int n_dimension) nogil:
-    return unit_price * substract(state, n_demand, n_dimension)
+    return unit_price * substract(state, n_demand, n_dimension+1)
 
 
 cdef inline double dispose(int[:] state, double unit_disposal) nogil:
@@ -101,7 +103,7 @@ cpdef inline double revenue(int[:] state,
                             double discount,
                             int n_capacity,
                             int n_dimension) nogil:
-    cdef double depletion = deplete(state, n_depletion, unit_salvage, n_dimension);
+    cdef double depletion = deplete(state, n_depletion, unit_salvage, n_dimension)
     cdef double holding = hold(state, unit_hold, n_dimension)
     cdef double ordering = order(state, n_order, unit_order, n_dimension)
     cdef double sales = sell(state, n_demand, unit_price, n_dimension)

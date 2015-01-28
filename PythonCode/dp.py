@@ -14,7 +14,7 @@ from dp_optimization import task
 
 def simulation():
 
-    # Read parameters from config file
+    # Read parameters from configuration file
     config = ConfigParser()
     config.read('./config.ini')
 
@@ -40,15 +40,16 @@ def simulation():
     demand_matrix = scipy.stats.poisson.rvs(drate, size=(n_period,
                                                          n_sample)
                                            ).astype(np.int32)
-
+    # Dimension of utility matrix
     shape = (n_capacity,) * n_dimension
 
-    # Boundry values of utitility is just depletion of all remaining goods
+    # Boundary values are just depletion of all remaining goods
+    # So let's sum them up
     current_utility = np.empty(shape)
     future_utility = unit_salvage * np.indices(shape).sum(axis=0)
 
+    # Thread pool for parallelization
     dispatch = Parallel(n_jobs=n_jobs, backend='threading')
-
 
     # Main loop
     for epoch in xrange(n_period):
@@ -57,10 +58,13 @@ def simulation():
                                                   epoch), end=', ')
             print("with demand: ", ','.join(map(str, demand_matrix[epoch])))
 
+        # Ravel utility matrix (to 1d) for fast access
+        # Noted that no copy of actual data is made
         current_utility_ravel = current_utility.ravel()
         future_utility_ravel = future_utility.ravel()
 
-        dispatch(delayed(task)(demand_matrix[epoch],
+        # We modify the current utility inside each task
+        tasks = (delayed(task)(demand_matrix[epoch],
                                current_utility_ravel,
                                future_utility_ravel,
                                unit_salvage,
@@ -75,7 +79,10 @@ def simulation():
                                job_number,
                                n_jobs,
                                verbosity) for job_number in range(n_jobs))
+        # Kick them off
+        dispatch(tasks)
 
+        # Copy them back and go to next epoch
         future_utility[:] = current_utility
 
     return future_utility

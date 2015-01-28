@@ -1,3 +1,6 @@
+# -*- encoding: utf-8 -*-
+# Just as in C, we need header (.pxd file) for Cython functions
+
 cdef int cmin(int, int) nogil
 cdef int cmax(int, int) nogil
 cdef int csum(int[:], int) nogil

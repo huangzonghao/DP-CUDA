@@ -16,10 +16,12 @@ from cython.view cimport array
 cimport dp_state
 
 
+# printf in C is thread safe
 cdef extern from "stdio.h":
     int printf(char *, ...) nogil
 
 
+# Actual task dispatched
 cpdef task(int[:] demands,
            double[:] current_utility_ravel,
            double[:] future_utility_ravel,
@@ -36,6 +38,9 @@ cpdef task(int[:] demands,
            int n_job,
            int verbosity=0):
     cdef int index = job_number
+
+    # Allocate memory of state queue ahead
+    # Avoid memory allocation inside inner loop
     cdef int[:] transient_state = array(shape=(n_dimension+1,),
                                         itemsize=sizeof(int),
                                         format="i")
@@ -43,6 +48,7 @@ cpdef task(int[:] demands,
                                       itemsize=sizeof(int),
                                       format="i")
     with nogil:
+        # for index in range(job_number, n_capacity**n_dimension, n_jobs):
         while index < n_capacity**n_dimension:
             optimal_value = optimize(index,
                                     current_state,
@@ -67,7 +73,7 @@ cdef double optimize(int encoded_current_state,
                      int[:] current_state,
                      int[:] transient_state,
                      int[:] demands,
-                     double[:] future_utility,
+                     double[:] future_utility_ravel,
                      double unit_salvage,
                      double unit_hold,
                      double unit_order,
@@ -82,10 +88,11 @@ cdef double optimize(int encoded_current_state,
     '''
     Exhaustive search of best n_depletion and n_order.
     Arguments:
-        current_index: the state x we are optimizing on
+        encoded_current_index: the encoded state we are optimizing on
+        current_state: buffer of length n_dimension+1 for buffering
+        transient_state: same as current_state
         demands: an array of samples of demand
-        future_utility: utility matrix of tomorrow
-        verbosity: set larger than 0 to print optimal n_depletion and n_order.
+        future_utility_ravel: utility matrix of tomorrow to refer
     Return:
         maximum: the maximum utility of current_index
     '''
@@ -106,6 +113,9 @@ cdef double optimize(int encoded_current_state,
     # initialize current_state
     dp_state.decode(current_state, encoded_current_state,
                     n_capacity, n_dimension)
+
+    # Set limit of n_depletion
+    # We are using hand written function in C to speed up
     holding = dp_state.csum(current_state, n_dimension + 1)
     at_least_deplete = dp_state.cmax(holding - max_hold, 0)
 
@@ -113,6 +123,7 @@ cdef double optimize(int encoded_current_state,
         for n_order in range(n_capacity):
             objective = 0.0
             for i in range(n_sample):
+                # Restore initial state
                 transient_state[:] = current_state
                 revenue = dp_state.revenue(transient_state,
                                            n_depletion,
@@ -125,21 +136,23 @@ cdef double optimize(int encoded_current_state,
                                            unit_disposal,
                                            discount,
                                            n_capacity,
-                                           n_dimension + 1)
-                # The state is changed within state.revenue() call
+                                           n_dimension)
+                # The state is changed within dp_state.revenue() call
                 encoded_future_state = dp_state.encode(transient_state,
                                                        n_capacity,
                                                        n_dimension)
-                objective += (revenue +
-                                discount * future_utility[encoded_future_state])
+                objective += (revenue + discount * \
+                              future_utility_ravel[encoded_future_state])
 
             # Simply taking the maximum without any complex heuristics
             if objective > maximum:
                 z, q = n_depletion, n_order
                 maximum = objective
 
-    if verbosity >= 100:
-        printf("State: %0*d, Result: (%d, %d), Value: %.2f\n", n_dimension,
-                                                               encoded_current_state,
-                                                               z, q, maximum/n_sample)
+    if verbosity >= 10:
+        printf("State: %d, Result: (%d, %d), Value: %.2f\n",
+               encoded_current_state, z, q, maximum / n_sample)
+
+    # Instead of taking mean in each inner loop
+    # We take it after optimization
     return maximum / n_sample
