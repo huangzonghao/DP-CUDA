@@ -172,38 +172,30 @@ to be discussed.
 
 - for \\(x=(x _1,...,x _m)\\), use the computed threshold values to find \\(z ^{\ast} (x),~ q ^{\ast}(x).\\) Update \\(V(x)\\).
 
-### Second Algorithm: Tree structure Algorithm
+### Second Algorithm: Top-down Algorithm
 
-Besides the threshold Algorithm proposed above, we have this relatively simple algorithm.
+$$
+V _t (x)= \max _{z,q} v _t (x,z,q) =
+\max _{z,q} [\mathbf {E} ~ \textrm {profit} 
+(x,z,q,D) + \alpha \mathbf {E} ~ V _{t+1} (\textrm {dynamic} (x,z,q,D))]
+$$
 
-First organize all the \\(k ^m\\) states in a tree.
-Each node (state) has a pointer that points to its son node
-(the state after depleting one unit, for example 
-(3,2,1) is the son node of (4,2,1)). This might be realized by linked list (or other data structure?).
-However, one node may have multiple father nodes, 
-for instance, (0,2,3) has two father nodes: (1,2,3) and
-(0,3,3). All nodes will eventually go to the only root node:(0,...,0).
+First we define an auxiliary function \\( u _t (x,z)= \max _q u _t (x,z,q)\\) (use linear search over \\([0,k-1]\\)).
 
-As noted before, determining the optimal action for each state reduces to finding the optimal deplete_down_to state. For example, for state \\(x=(2,3,2)\\), if the optimal depletion quantity is 3, it's equivalent to saying the optimal deplete_down_to state is (0,2,2). Our algorithm
-relies on the following important fact:
+1. Initialization: \\( V _{T+1}(x) = s \cdot \textrm{sum} (x)\\);
+2. for \\(t= T:0\\) do the following steps.
+3. for \\(n=1:(m-1)\\), start with \\(k ^{n}\\) elements as basic row, and perform \\(k-1\\)
+ iterations using GPU;
+4. Each iteration compute \\(k ^n\\) elements in parallel, specified in step 5;
+5. Compute each of the \\(k ^n\\) elements (denoted as \\(x\\)): let \\(y\\) be the father of 
+\\(x\\)(already computed), two cases: 
+if \\(z ^{\ast} (y)=0\\), then \\(z ^{\ast} (x) =0 ~\textrm{or}~ 1\\); else if 
+\\(z ^{\ast} (y)> 0\\),  then \\(z ^{\ast} (x) =z ^{\ast} (y) +1, ~ q ^{\ast} (x) =q ^{\ast} (y).\\)
 
-**If one state x has optimal deplete_down_to state y,
-then all ancestors of y (includes x) have the same optimal deplete_down_to state y, and all descendants of y
-has itself as the optimal deplete_down_to state (that means no depletion at all).**
+It's easily seen that we save a lot of work in step 5 by making use of the father-son link.
+About the state division, see Cube.pdf by Bairen, which is very intuitive.
 
-Thus we only need to compute leaf nodes, that is, nodes without ancestors. There are \\(k ^{m-1}\\) leaf nodes, still too much. We can do even better as follows:
 
-- For each leaf node, check if it's "filled"; if not,
-find its optimal depletedownto node (denote as y),   mark the leaf node "filled";
-- Find all leaf nodes that is ancestor of y, mark them 
-"filled"
-- Stop until all leaf nodes "filled".
-
-For example, for leaf node (5,3,4), if we find its optimal
-depletedownto node is (0,1,4), then we know leaf nodes
-such as (5,1,4), (5,2,4), both ancestor of (0,1,4), need not be recomputed.
-
-The obstacle for this algorithm is: for each node, how to find all leaf nodes that is ancestor of it efficiently?
 
 
 
