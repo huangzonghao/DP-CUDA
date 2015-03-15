@@ -36,7 +36,7 @@ flags = [
 
 # Project headers
 '-I',
-'.',
+'./src',
 
 # Cuda
 '-I',
