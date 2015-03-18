@@ -107,28 +107,6 @@ float stateValue( size_t dataIdx, size_t expiringToday, size_t storageToday, siz
 
          return sum;
 }
-/* use one d arrangement here */
-__global__ 
-void valueTableUpdateKernel( float* d_randomTable,
-                             float* d_valueTable, 
-                             float* d_tempTable,
-                             size_t iteratingDim,       // the coordinate that we are processing now
-                             size_t batchIdx,           // the batch index of the kernel launch for that coordinate... together with the iteratingDim, we should be able to obtain the data index
-                             ){
-
-  // allocate the shared memory for the demands
-  extern __shared__ float s_demands[];
-
-  // the cascading information is given by the iteratingDim
-  // assume all the nodes here has the oversight -- the starting several elements are computed by the cpu
-  int myIdx = blockIdx.x * blockDim + threadIdx.x;
-  long dataIdx = iteratingDim * ipow()
-
-
-
-}
-
-
 
 
 /* Initialize the cuda device */
@@ -159,18 +137,3 @@ void deviceInit(float * h_demandWeights, float * d_demandWeights, float * d_valu
        return;
 }
 
-/* update the value table for one day */
-void valueTableUpdate( float* d_randomTable,
-                       float* d_valueTable, 
-                       const dim3 kernelSize,       // number of blocks launched 
-                       const dim3 blockSize ){      // number of threads per block launched
-
-
-   size_t kernelCoutnerUpperLimit = pow(k, m - 2);    // around 27000
-   for ( size_t kernelCounter = 0; kernelCoutner < kernelCoutnerUpperLimit; ++kernelCoutner){
-
-   }
-
-  
-
-}
