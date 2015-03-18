@@ -1,0 +1,9 @@
+\begin{thebibliography}{1}
+
+\bibitem{rLEC99b}
+P.~L'Ecuyer.
+\newblock Good parameters and implementations for combined multiple recursive
+  random number generators.
+\newblock {\em Operations Research}, 47(1):159--164, 1999.
+
+\end{thebibliography}
