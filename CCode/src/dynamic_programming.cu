@@ -18,9 +18,6 @@ init_kernel(float *current_values,
         unsigned parent = current - batch_size;
 
         current_values[current] = current_values[parent] + 1.0;
-
-        printf("Computing %d: %.0f, referring %d\n", 
-                current, current_values[current], parent);
     }
 }
 
@@ -42,7 +39,7 @@ init_states(float *current_values) {
 }
 
 
-__device__ unsigned
+__device__ inline unsigned
 sum(unsigned *state, unsigned length) {
 
     unsigned acc = 0;
@@ -53,7 +50,7 @@ sum(unsigned *state, unsigned length) {
 }
 
 
-__device__ void
+__device__ inline void
 decode(unsigned *state, unsigned index) {
 
     for (int i = n_dimension - 1; i >= 0; i--) {
@@ -64,7 +61,7 @@ decode(unsigned *state, unsigned index) {
 }
 
 
-__device__ unsigned
+__device__ inline unsigned
 encode(unsigned *state) {
 
     unsigned acc = 0;
@@ -76,7 +73,7 @@ encode(unsigned *state) {
 }
 
 
-__device__ unsigned
+__device__ inline unsigned
 substract(unsigned *state, unsigned length, unsigned quantity) {
 
     unsigned acc = 0;
@@ -95,21 +92,21 @@ substract(unsigned *state, unsigned length, unsigned quantity) {
 }
 
 
-__device__ float
+__device__ inline float
 deplete(unsigned *state, unsigned quantity) {
 
     return unit_salvage * substract(state, n_dimension, quantity);
 }
 
 
-__device__ float
+__device__ inline float
 hold(unsigned *state) {
 
     return unit_hold * sum(state, n_dimension);
 }
 
 
-__device__ float
+__device__ inline float
 order(unsigned *state, unsigned quantity) {
 
     state[n_dimension] = quantity;
@@ -117,14 +114,14 @@ order(unsigned *state, unsigned quantity) {
 }
 
 
-__device__ float
+__device__ inline float
 sell(unsigned *state, unsigned quantity) {
 
     return unit_price * substract(state, n_dimension+1, quantity);
 }
 
 
-__device__ float
+__device__ inline float
 dispose(unsigned *state) {
     unsigned disposal = state[0];
     state[0] = 0;
@@ -132,19 +129,23 @@ dispose(unsigned *state) {
 }
 
 
-__device__ float
+__device__ inline float
 revenue(unsigned *state,
+        unsigned current,
         unsigned n_depletion,
         unsigned n_order,
         unsigned n_demand) {
+
+    decode(state, current);
 
     float depletion = deplete(state, n_depletion);
     float holding = hold(state);
     float ordering = order(state, n_order);
     float sales = sell(state, n_demand);
     float disposal = dispose(state);
+    float revenue = depletion + holding + discount * (ordering + sales + disposal);
 
-    return depletion + holding + discount * (ordering + sales + disposal);
+    return revenue;
 }
 
 
@@ -176,15 +177,13 @@ optimize(float *current_values,
 
             for (unsigned k = min_demand; k < max_demand; k++) {
 
-                float value = revenue(state, i, j, k);
+                float value = revenue(state, current, i, j, k);
                 unsigned future = encode(state);
                 value += discount * future_values[future];
 
                 expected_value += demand_pdf[k - min_demand] * value;
-
             }
-
-            if (expected_value > max_value) {
+            if (expected_value > max_value + 1e-6) {
                 max_value = expected_value;
                 n_depletion = i;
                 n_order = j;
@@ -231,7 +230,7 @@ iter_kernel(float *current_values,
                      n_capacity,
                      // n_demand: probability distribution and range [min, max)
                      demand_pdf,
-                     0,
+                     min_demand,
                      max_demand,
                      // future utility for reference
                      future_values);
@@ -242,23 +241,21 @@ iter_kernel(float *current_values,
                      current,
                      // n_depletion: optimal point and range [min, max)
                      depletion,
-                     depletion[parent],
                      depletion[parent]+1,
+                     depletion[parent]+2,
                      // n_order: optimal point and range [min, max)
                      order,
                      0,
                      n_capacity,
                      // n_demand: probability distribution and range [min, max)
                      demand_pdf,
-                     0,
+                     min_demand,
                      max_demand,
                      // future utility for reference
                      future_values);
 
         }
 
-        printf("Computing %d: %.2f, referring %d\n",
-                current, current_values[current], parent);
     }
 }
 
@@ -267,6 +264,7 @@ void
 iter_states(float *current_values,
             unsigned *depletion,
             unsigned *order,
+            const float *demand_pdf,
             float *future_values) {
 
     unsigned num_states = std::pow(n_capacity, n_dimension);
@@ -284,7 +282,6 @@ iter_states(float *current_values,
                                                max_demand,
                                                future_values,
                                                d, c, batch_size);
-
         }
     }
 }
