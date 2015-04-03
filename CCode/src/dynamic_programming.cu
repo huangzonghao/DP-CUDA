@@ -37,7 +37,6 @@ init_states(float *current_values) {
         for (unsigned c = 1; c < n_capacity; c++) {
             init_kernel<<<n_block, n_thread>>>(current_values,
                                                d, c, batch_size);
-
         }
     }
 }
@@ -149,10 +148,63 @@ revenue(unsigned *state,
 }
 
 
+__device__ void
+optimize(float *current_values,
+         unsigned current,
+         unsigned *depletion,
+         unsigned min_depletion,
+         unsigned max_depletion,
+         unsigned *order,
+         unsigned min_order,
+         unsigned max_order,
+         const float *demand_pdf,
+         unsigned min_demand,
+         unsigned max_demand,
+         float *future_values) {
+
+    unsigned state[n_dimension+1] = {};
+    decode(state, current);
+
+    unsigned n_depletion = 0;
+    unsigned n_order = 0;
+    float max_value = 0.0;
+
+    for (unsigned i = min_depletion; i < max_depletion; i++) {
+        for (unsigned j = min_order; j < max_order; j++) {
+
+            float expected_value = 0.0;
+
+            for (unsigned k = min_demand; k < max_demand; k++) {
+
+                float value = revenue(state, i, j, k);
+                unsigned future = encode(state);
+                value += discount * future_values[future];
+
+                expected_value += demand_pdf[k - min_demand] * value;
+
+            }
+
+            if (expected_value > max_value) {
+                max_value = expected_value;
+                n_depletion = i;
+                n_order = j;
+            }
+        }
+    }
+
+    current_values[current] = max_value;
+    depletion[current] = n_depletion;
+    order[current] = n_order;
+}
+
+
 __global__ void
 iter_kernel(float *current_values,
             unsigned *depletion,
             unsigned *order,
+            const float *demand_pdf,
+            unsigned min_demand,
+            unsigned max_demand,
             float *future_values,
             unsigned d,
             unsigned c,
@@ -160,25 +212,50 @@ iter_kernel(float *current_values,
 
     unsigned idx = blockDim.x * blockIdx.x + threadIdx.x;
 
-    unsigned state[n_dimension+1] = {};
-
     if (idx < batch_size) {
 
         unsigned current = c * batch_size + idx;
         unsigned parent = current - batch_size;
 
-        decode(state, current);
-        unsigned total = sum(state, n_dimension+1);
+        if (depletion[parent] == 0) {
 
-        unsigned n_depletion;
+            optimize(current_values,
+                     current,
+                     // n_depletion: optimal point and range [min, max)
+                     depletion,
+                     0,
+                     2,
+                     // n_order: optimal point and range [min, max)
+                     order,
+                     0,
+                     n_capacity,
+                     // n_demand: probability distribution and range [min, max)
+                     demand_pdf,
+                     0,
+                     max_demand,
+                     // future utility for reference
+                     future_values);
 
-        if (depletion[parent] != 0) {
-            n_depletion = depletion[parent] + 1;
-        } else {
+        } else /* (depletion[parent] != 0) */ {
+
+            optimize(current_values,
+                     current,
+                     // n_depletion: optimal point and range [min, max)
+                     depletion,
+                     depletion[parent],
+                     depletion[parent]+1,
+                     // n_order: optimal point and range [min, max)
+                     order,
+                     0,
+                     n_capacity,
+                     // n_demand: probability distribution and range [min, max)
+                     demand_pdf,
+                     0,
+                     max_demand,
+                     // future utility for reference
+                     future_values);
+
         }
-
-
-        current_values[current] = future_values[current];
 
         printf("Computing %d: %.2f, referring %d\n",
                 current, current_values[current], parent);
@@ -202,6 +279,9 @@ iter_states(float *current_values,
             iter_kernel<<<n_block, n_thread>>>(current_values,
                                                depletion,
                                                order,
+                                               demand_pdf,
+                                               min_demand,
+                                               max_demand,
                                                future_values,
                                                d, c, batch_size);
 

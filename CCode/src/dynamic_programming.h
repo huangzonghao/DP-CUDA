@@ -10,7 +10,7 @@ extern void iter_states(float *,
 const unsigned n_period = 1;
 
 const unsigned n_dimension = 3;
-const unsigned n_capacity = 10;
+const unsigned n_capacity = 4;
 
 const float unit_salvage = 1.0;
 const float unit_disposal = -2.0;
@@ -18,7 +18,17 @@ const float unit_hold = -0.5;
 const float unit_order = -3.0;
 const float unit_price = 5.0;
 
-const float demand_rate = 8.0;
 const float discount = 0.95;
+
+const unsigned min_demand = 0;
+const unsigned max_demand = 20;
+
+__constant__
+const float demand_pdf[max_demand - min_demand] = {
+    0.00033546, 0.0026837,  0.0107348,  0.02862614, 0.05725229,
+    0.09160366, 0.12213822, 0.13958653, 0.13958653, 0.12407692,
+    0.09926153, 0.07219021, 0.0481268 , 0.02961649, 0.01692371,
+    0.00902598, 0.00451299, 0.00212376, 0.00094389, 0.00039743
+};
 
 #endif /* DYNAMIC_PROGRAMMING_H */
