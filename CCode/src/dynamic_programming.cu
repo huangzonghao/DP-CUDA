@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <math.h>
 
+#include <cuda.h>
+
 #include "dynamic_programming.h"
 
 __global__ void
@@ -158,9 +160,23 @@ iter_kernel(float *current_values,
 
     unsigned idx = blockDim.x * blockIdx.x + threadIdx.x;
 
+    unsigned state[n_dimension+1] = {};
+
     if (idx < batch_size) {
+
         unsigned current = c * batch_size + idx;
         unsigned parent = current - batch_size;
+
+        decode(state, current);
+        unsigned total = sum(state, n_dimension+1);
+
+        unsigned n_depletion;
+
+        if (depletion[parent] != 0) {
+            n_depletion = depletion[parent] + 1;
+        } else {
+        }
+
 
         current_values[current] = future_values[current];
 
