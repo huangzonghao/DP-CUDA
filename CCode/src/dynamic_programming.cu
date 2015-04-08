@@ -5,6 +5,8 @@
 
 #include "dynamic_programming.h"
 
+
+// CUDA Kernel function for initialization
 __global__ void
 init_kernel(float *current_values,
             unsigned d,
@@ -22,6 +24,7 @@ init_kernel(float *current_values,
 }
 
 
+// plain C function for interact with CUDA
 void
 init_states(float *current_values) {
 
@@ -29,7 +32,6 @@ init_states(float *current_values) {
 
     for (unsigned d = 0; d < n_dimension; d++) {
         unsigned batch_size = pow(n_capacity, d);
-        unsigned n_thread = 512;
         unsigned n_block = batch_size / n_thread + 1;
         for (unsigned c = 1; c < n_capacity; c++) {
             init_kernel<<<n_block, n_thread>>>(current_values,
@@ -39,6 +41,7 @@ init_states(float *current_values) {
 }
 
 
+// Summation of values in a state array
 __device__ inline unsigned
 sum(unsigned *state, unsigned length) {
 
@@ -50,6 +53,11 @@ sum(unsigned *state, unsigned length) {
 }
 
 
+// Decode index and store the result into
+// the state array by overwritting
+// turning base 10 index into base ``n_capacity``
+// without the last entry
+// as it is always called with respect to today
 __device__ inline void
 decode(unsigned *state, unsigned index) {
 
@@ -61,6 +69,9 @@ decode(unsigned *state, unsigned index) {
 }
 
 
+// The inverse function of ``decode``
+// without the 0-th entry
+// as it is always called with respect to future
 __device__ inline unsigned
 encode(unsigned *state) {
 
@@ -73,6 +84,8 @@ encode(unsigned *state) {
 }
 
 
+// The common component for both deplete and sell
+// Original values in ``state`` are overwritten
 __device__ inline unsigned
 substract(unsigned *state, unsigned length, unsigned quantity) {
 
@@ -92,6 +105,7 @@ substract(unsigned *state, unsigned length, unsigned quantity) {
 }
 
 
+// Original values in ``state`` are overwritten
 __device__ inline float
 deplete(unsigned *state, unsigned quantity) {
 
@@ -99,6 +113,7 @@ deplete(unsigned *state, unsigned quantity) {
 }
 
 
+// Simple summation
 __device__ inline float
 hold(unsigned *state) {
 
@@ -106,6 +121,7 @@ hold(unsigned *state) {
 }
 
 
+// Original values in ``state`` are overwritten
 __device__ inline float
 order(unsigned *state, unsigned quantity) {
 
@@ -114,6 +130,7 @@ order(unsigned *state, unsigned quantity) {
 }
 
 
+// Original values in ``state`` are overwritten
 __device__ inline float
 sell(unsigned *state, unsigned quantity) {
 
@@ -121,6 +138,7 @@ sell(unsigned *state, unsigned quantity) {
 }
 
 
+// Original values in ``state`` are overwritten
 __device__ inline float
 dispose(unsigned *state) {
     unsigned disposal = state[0];
@@ -129,14 +147,13 @@ dispose(unsigned *state) {
 }
 
 
+// Original values in ``state`` are overwritten
 __device__ inline float
 revenue(unsigned *state,
         unsigned current,
         unsigned n_depletion,
         unsigned n_order,
         unsigned n_demand) {
-
-    decode(state, current);
 
     float depletion = deplete(state, n_depletion);
     float holding = hold(state);
@@ -163,8 +180,10 @@ optimize(float *current_values,
          unsigned max_demand,
          float *future_values) {
 
+    // Allocate a memory buffer on stack
+    // So we don't need to do it for every loop
+    // The last dimension are used to store the ordering
     unsigned state[n_dimension+1] = {};
-    decode(state, current);
 
     unsigned n_depletion = 0;
     unsigned n_order = 0;
@@ -177,12 +196,24 @@ optimize(float *current_values,
 
             for (unsigned k = min_demand; k < max_demand; k++) {
 
+                // Initialize the ``state`` array
+                // before each call of ``revenue()``
+                decode(state, current);
+
+                // By calling ``revenue()``, the state array
+                // now stores the state for future
                 float value = revenue(state, current, i, j, k);
+
+                // And we can extract the index of future state
                 unsigned future = encode(state);
+
+                // And find the corresponding utility of future
                 value += discount * future_values[future];
 
                 expected_value += demand_pdf[k - min_demand] * value;
             }
+
+            // Simply taking the moving maximum
             if (expected_value > max_value + 1e-6) {
                 max_value = expected_value;
                 n_depletion = i;
@@ -191,12 +222,14 @@ optimize(float *current_values,
         }
     }
 
+    // Store the optimal point and value
     current_values[current] = max_value;
     depletion[current] = n_depletion;
     order[current] = n_order;
 }
 
 
+// The CUDA kernel function for DP
 __global__ void
 iter_kernel(float *current_values,
             unsigned *depletion,
@@ -260,6 +293,7 @@ iter_kernel(float *current_values,
 }
 
 
+// The plain C function to interact with CUDA
 void
 iter_states(float *current_values,
             unsigned *depletion,
@@ -271,7 +305,6 @@ iter_states(float *current_values,
 
     for (unsigned d = 0; d < n_dimension; d++) {
         unsigned batch_size = pow(n_capacity, d);
-        unsigned n_thread = 512;
         unsigned n_block = batch_size / n_thread + 1;
         for (unsigned c = 1; c < n_capacity; c++) {
             iter_kernel<<<n_block, n_thread>>>(current_values,

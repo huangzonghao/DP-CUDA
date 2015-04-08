@@ -8,6 +8,10 @@ extern void iter_states(float *,
                         const float *,
                         float *);
 
+// The number of n_thread for each block
+// should be power of 2 and does not exceed 512
+const unsigned n_thread = 512;
+
 const unsigned n_period = 3;
 
 const unsigned n_dimension = 6;
