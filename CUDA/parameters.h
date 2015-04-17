@@ -2,7 +2,7 @@
 #define _PARA_H
 /* the parameters of the program */
 
-#define USE_MACRO
+#define USE_VARIABLE
 
 
 #ifdef USE_VARIABLE
@@ -42,6 +42,17 @@ const size_t maxhold = 3;
 
 /* the arrival rate for poisson distribution */
 const float lambda = 8;
+
+
+const unsigned min_demand = 0;
+const unsigned max_demand = 20;
+
+const float demand_distribution[max_demand - min_demand] = {
+    0.00033546, 0.0026837,  0.0107348,  0.02862614, 0.05725229,
+    0.09160366, 0.12213822, 0.13958653, 0.13958653, 0.12407692,
+    0.09926153, 0.07219021, 0.0481268 , 0.02961649, 0.01692371,
+    0.00902598, 0.00451299, 0.00212376, 0.00094389, 0.00039743
+};
 
 #endif
 

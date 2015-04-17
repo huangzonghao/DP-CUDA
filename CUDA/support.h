@@ -14,9 +14,11 @@
 #define min( a, b ) ( ((a) < (b)) ? (a) : (b) )
 #endif
 
-
-void deviceInit( float * h_randomTable, float * d_randomTable, float * d_valueTable, size_t randomTableSize, size_t valueTableSize);
-
+struct cudaInfoStruct{
+  size_t deviceCount = 0;
+  size_t numBlocks = 0;
+  size_t numThreadsPerBlock = 0;
+};
 
 void valueTableUpdate( float* d_randomTable,
                        float d_valueTable, 
