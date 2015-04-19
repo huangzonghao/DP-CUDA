@@ -2,6 +2,10 @@
 #include <cmath>
 using namespace std;
 
+void printResult(){
+    
+}
+
 int main(){
 	/* declare variables */
     /* system features */
@@ -14,12 +18,11 @@ int main(){
 	// device tables
 	// two tables in total
 	float ** d_valueTables[2];
-    size_t * valueTablesLength[2];
-    valueTablesLength[0] = pow(k, m);
-    valueTablesLength[1] = valueTablesLength[0];
+    unsigned long  valueTablesLength;
+    valueTablesLength = pow(k, m);
 
 	/* memory allocation */
-	h_valueTable = malloc( pow(k, m) * sizeof(float) );
+	h_valueTable = malloc( valueTablesLength * sizeof(float) );
     deviceTableInit(2, 					// total number of tables
     				d_valueTables, 		
     				valueTablesLength,
@@ -28,9 +31,12 @@ int main(){
 
 
     /* evalueate the value of the table with the given parameters and the given policy f */
-    evalWithPolicy( h_valueTable, d_valueTables, &cudainfo);
+    evalWithPolicy( h_valueTable, d_valueTables, valueTablesLength, &cudainfo);
+
+    /* output the file */
+    printResult();
 
 
-        return 0;
+    return 0;
 }
 

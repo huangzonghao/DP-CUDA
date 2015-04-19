@@ -20,20 +20,8 @@ struct cudaInfoStruct{
   size_t numThreadsPerBlock = 0;
 };
 
-void valueTableUpdate( float* d_randomTable,
-                       float d_valueTable, 
-                       const size_t m, 
-                       const size_t k,
-                       const size_t numSamples,
-                       const float holdingCost,
-                       const float sellingPrice,
-                       const float orderingCost,
-                       const float disposalCost,
-                       const float salvageValue,
-                       const float discountRate,
-                       const size_t maxHold
-                       const dim3 kernelSize,       // number of blocks launched 
-                       const dim3 blockSize );     // number of threads per block launched
-
+void evalWithPolicy(float* h_valueTable, float * d_valueTables, cudaInfoStruct * cudainfo);
+void presetValueTable(float * d_valueTable, unsigned long  table_length, cudaInfoStruct * cudainfo);
+void gatherSystemInfo(size_t * deviceCount, size_t * numBlocks, size_t * numThreadsPerBlock);
 
 #endif

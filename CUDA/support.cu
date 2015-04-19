@@ -8,7 +8,6 @@
 //the MSB is the number of items to be expired and the LSB is the number of the newly purchased items
 /******** kernels ********/
 
-
 /* power function */
 __device__ inline
 long ipow(size_t base, size_t exp)
@@ -23,27 +22,26 @@ long ipow(size_t base, size_t exp)
     }
     return result;
 }
-/* convert the 1d index to m-d coordinate */
+/* convert the oneD index to m-d coordinate */
 __device__ inline
-void 1DtomD(long 1DIdx, size_t* mDIdx){
+void oneDtomD (long oneDIdx, size_t* mDIdx){
 
       for( size_t i = 0; i < m ; ++i){
-            mDIdx[i] = 1DIdx % k;
-            1DIdx /= k;
+            mDIdx[i] = oneDIdx % k;
+            oneDIdx /= k;
       }
-      return;
 
 }
 
-/* convert the mD coordinate to 1d index */
+/* convert the mD coordinate to oneD index */
 __device__ inline
-void mDto1D(size_t* mDIdx, long &1DIdx){
+void mDtooneD(size_t* mDIdx, long &oneDIdx){
         long result = 0;
         for (size_t i = 0; i < m; ++i){
                result += mDIdx[i] * ipow(k, i);     // can be optimized once set up a reference table for ipow(k,i)
         }
 
-        1DIdx = result;
+        oneDIdx = result;
 }
 
 /* returns the total number of items stored */
@@ -58,8 +56,7 @@ size_t checkStorage(size_t* mDarray){
 
 /* depleting */
 /* note the MSB represents the number of items to be expired  */
-/* so pay attention to the array index
- */
+
 __device__ inline
 void depleteStorage( size_t* mDarray,  size_t d_amount){
         size_t buffer = 0;
@@ -84,9 +81,20 @@ void depleteStorage( size_t* mDarray,  size_t d_amount){
         }
 }
 
+/* the data transmission between host and device, the host addr always come first */
+void passToDevice(float* h_array, float* d_array, size_t length){
+        checkCudaErrors(cudaMemcpy(d_array, h_array, length, cudaMemcpyHostToDevice));
+        return;
+}
+void readFromDevice(float * h_array, float* d_array, size_t length){
+        checkCudaErrors(cudaMemcpy(h_array, d_array, length, cudaMemcpyDeviceToHost));
+        return;
+}
+
+/* Initialize the cuda device */
 /* set the init value of all entries in the value table to 0 */
 __global__ 
-void valueTableSettoZero(float* d_valueTable, long arrayLength  ){    
+void kernel_deviceTableInit(float* d_valueTable, long arrayLength  ){    
   long stepSize = gridDim.x * gridDim.y * blockDim.x * blockDim.y;  // the total number of threads which have been assigned for this task
   long myStartIdx = (gridDim.x * blockIdx.y + blockIdx.x - 1) * blockDim.x * blockDim.y +  threadIdx.y * blockDim.x + threadIdx.x;
   for (long long i = myStartIdx; i < arrayLength; i += stepSize)
@@ -95,6 +103,20 @@ void valueTableSettoZero(float* d_valueTable, long arrayLength  ){
   __syncthreads(); 
 
 }
+/* allocate the device memory and initialize the values (the data type is hard coded to float)*/
+void deviceTableInit(size_t numTables, float ** tables, unsigned long tableLengths, cudaInfoStruct * cudainfo){
+       dim3 gridSize(cudainfo->numBlocks, 1, 1);
+       dim3 blockSize(cudainfo->numThreadsPerBlock, 1, 1);
+
+       for ( size_t i = 0; i < numTables; ++i){
+               checkCudaErrors(cudaMalloc(tables[i], tableLengths));
+               deviceTableInitKernel<<< gridSize, blockSize>>>(tables[i], tableLengths[i]);
+       } 
+
+       return;
+}
+
+
 
 /* evaluate the state value given z and q */
 /* return th expected value over the demands */
@@ -116,7 +138,7 @@ float stateValue( size_t dataIdx, size_t expiringToday, size_t storageToday, siz
 
 /* use one d arrangement here */
 __global__ 
-void valueTableUpdateKernel( float* d_randomTable,
+void kernel_valueTableUpdateWithPolicy( float* d_randomTable,
                              float* d_valueTable, 
                              float* d_tempTable,
                              size_t iteratingDim,       // the coordinate that we are processing now
@@ -131,63 +153,56 @@ void valueTableUpdateKernel( float* d_randomTable,
   int myIdx = blockIdx.x * blockDim + threadIdx.x;
   long dataIdx = iteratingDim * ipow()
 
-
-
 }
-
-/* Initialize the cuda device */
-/* allocate the device memory and initialize the values (the data type is hard coded to float)*/
-void deviceTableInit(size_t numTables, float ** tables, long * tableLengths, cudaInfoStruct * cudainfo){
-       dim3 gridSize(cudainfo->numBlocks, 1, 1);
-       dim3 blockSize(cudainfo->numThreadsPerBlock, 1, 1);
-
-       for ( size_t i = 0; i < numTables; ++i){
-               checkCudaErrors(cudaMalloc(tables[i], tableLengths[i]));
-               valueTableSettoZero<<< gridSize, blockSize>>>(tables[i], tableLengths[i]);
-       } 
-
-       return;
-} 
-
-/* the data transmission between host and device, the host addr always come first */
-void passToDevice(float* h_array, float* d_array, size_t length){
-        checkCudaErrors(cudaMemcpy(d_array, h_array, length, cudaMemcpyHostToDevice));
-        return;
-}
-void readFromDevice(float * h_array, float* d_array, size_t length){
-        checkCudaErrors(cudaMemcpy(h_array, d_array, length, cudaMemcpyDeviceToHost));
-        return;
-}
-
-
 /* update the value table for one day */
 /* only need to hold 2 tables and update each one at a time */
-void valueTableUpdate( float* d_valueTable, 
-                       const dim3 kernelSize,       // number of blocks launched 
-                       const dim3 blockSize ){      // number of threads per block launched
+void valueTableUpdateWithPolicy( float** d_valueTables, 
+                                 size_t currentTable, 
+                                 size_t numDepletion, 
+                                 cudaInfoStruct cudainfo ){
 
 }
-/* write in the values of the last day in the period */
-/**/
-__global__
-void writeinEdgeValues(float * d_valueTable){
 
+
+/* write in the values of the last day in the period */
+
+__global__
+void kernel_presetValueTable(float * d_valueTable, long long table_length){
+  extern __shared__ size_t mDIdx[];
+  long stepSize = gridDim.x * blockDim.x;  // the total number of threads which have been assigned for this task, oneD layout everywhere
+  long myStartIdx = blockIdx.x * blockDim.x + threadIdx.x;
+  for (unsigned long i = myStartIdx; i < table_length; i += stepSize){
+    oneDtomD(i,mDIdx);
+    d_valueTable[i] = checkStorage(mDIdx) * s;
+  }
+
+  __syncthreads(); 
 }
 
 /* the interface for the main function */
-void presetValueTable(float * d_valueTable, cudaInfoStruct * cudainfo){
-  writeinEdgeValues<<<cudainfo->numBlocks, cudainfo->numThreadsPerBlock>>>(float * d_valueTable);
+void presetValueTable(float * d_valueTable, unsigned long  table_length, cudaInfoStruct * cudainfo){
+  kernel_presetValueTable<<<cudainfo->numBlocks, cudainfo->numThreadsPerBlock, m * sizeof(size_t) >>>(float * d_valueTable, size_t table_length);
   return;
 }
 /* the main function which takes care of the dispatch and deploy */
-void evalWithPolicy(float* h_valueTable, float * d_valueTables, cudaInfoStruct * cudainfo){
-        // first init make the d_valueTables[0] to the edge values
+void evalWithPolicy(float* h_valueTable, float ** d_valueTables, unsigned long tableLength, cudaInfoStruct * cudainfo){
+// the policy is : the depletion amount is always zero except the first day
+        size_t currentTable = 0;      // the index of table to be updated in next action
+
+        /*first init make one of the d_valueTables to the edge values*/
+        presetValueTable(d_valueTables[currentTable], valueTablesLength, cudainfo);
+        currentTable = 1 - currentTable;
+
         /* T periods in total */
         for ( size_t iPeriod = 0; iPeriod < T; ++iPeriod){
-            // determine which the role of the tables
-            valueTableUpdate(
-
+          if(iPeriod != T-1){
+            valueTableUpdateWithPolicy( d_valueTables, currentTable, 0, cudainfo);
+            currentTable = 1 - currentTable;
+          }
         }
+        // the final result stores in the (1 - currentTable)
+        readFromDevice(h_valueTable, d_valueTables[1 - currentTable], tableLength);
+        return;
 }
 
 /* Gather the system information, fol auto fill in the block number and the thread number per block */
