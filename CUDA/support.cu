@@ -1,9 +1,15 @@
 #include "support.h"
 #include "parameters.h"
 
+
 // CUDA-C includes
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <memory>
+#include <iostream>
+#include "helper_cuda.h"
+#include "helper_math.h"
+
 
 extern unsigned long  valueTablesLength;
 
@@ -69,7 +75,7 @@ void depleteStorage( size_t* mDarray,  size_t d_amount){
                         continue;
                 }
 
-                if(mDarray[i] - d_amount >= 0)
+                if(mDarray[i] >= d_amount )
                 {
                         mDarray[i] -= d_amount;
                         d_amount  = 0;
@@ -85,6 +91,10 @@ void depleteStorage( size_t* mDarray,  size_t d_amount){
 
 /* the data transmission between host and device, the host addr always come first */
 void passToDevice(float* h_array, float* d_array, size_t length){
+        checkCudaErrors(cudaMemcpy(d_array, h_array, length, cudaMemcpyHostToDevice));
+        return;
+}
+void passToDevice(const float* h_array, float* d_array, size_t length){
         checkCudaErrors(cudaMemcpy(d_array, h_array, length, cudaMemcpyHostToDevice));
         return;
 }
@@ -111,8 +121,8 @@ void deviceTableInit(size_t numTables, float ** tables, unsigned long tableLengt
        dim3 blockSize(cudainfo->numThreadsPerBlock, 1, 1);
 
        for ( size_t i = 0; i < numTables; ++i){
-               checkCudaErrors(cudaMalloc(tables[i], tableLengths));
-               deviceTableInitKernel<<< gridSize, blockSize>>>(tables[i], tableLengths[i]);
+               checkCudaErrors(cudaMalloc(tables + i, tableLengths));
+               kernel_deviceTableInit<<< gridSize, blockSize>>>(tables[i], tableLengths);
        } 
 
        return;
@@ -125,19 +135,18 @@ void deviceTableInit(size_t numTables, float ** tables, unsigned long tableLengt
 // to complicit to be an inline function
 __device__
 float stateValue( size_t expiringToday, 
-                  size_t storageToday, 
-                  size_t z, size_t q, 
-                  size_t * d_randomTable, 
-                  size_t min_demand, size_t max_demand){
+                  int storageToday, 
+                  int z, int q, 
+                  float * d_randomTable){
 
          float profit = 0;
          float sum = 0;
-         for ( size_t i = 0; i < numDemands; ++i){
+         for ( size_t i = min_demand; i < max_demand; ++i){
                  profit = s * z                                                             // the money collected depletion 
-                        - h * max(int(storageToday) - z , 0)                                // the cost for holding all the items 
+                        - h * max(int(int(storageToday) - z) , 0)                                // the cost for holding all the items 
                         - alpha * c * q                                                       // the money spent on ordering new items
-                        + alpha * r * min(i, storageToday - z + q)               // the total income from selling the products to the customers
-                        - alpha * theta * max(expiringToday - z - i, 0);// the money spent on the expired items
+                        + alpha * r * min(int(i), int(storageToday - z + q))               // the total income from selling the products to the customers
+                        - alpha * theta * max(int(expiringToday - z - i), 0);// the money spent on the expired items
                  sum += profit * d_randomTable[i];
          }
 
@@ -155,7 +164,7 @@ void kernel_valueTableUpdateWithPolicy(  float* d_randomTable,
   // declare the local variables 
   extern __shared__ size_t mDIdx[];
   float bestresult = 0;
-  float bestq = 0;
+  //float bestq = 0;
   float tempresult = 0;
   size_t storageToday = 0;
   // this is both the thread index and the data index in this batch
@@ -174,12 +183,12 @@ void kernel_valueTableUpdateWithPolicy(  float* d_randomTable,
               tempresult = stateValue( mDIdx[0], 
                                        storageToday, 
                                        0,  q, 
-                                       d_randomTable, 
-                                       min_demand, max_demand);
+                                       d_randomTable
+                                      );
           
               if (tempresult > bestresult){
                 bestresult = tempresult;
-                bestq = q;
+                //bestq = q;
               }
     
         }
@@ -194,9 +203,9 @@ void valueTableUpdateWithPolicy( float** d_valueTables,
                                  size_t currentTableIdx, 
                                  size_t depletionIndicator,       // either zero or the expected demand for one day
                                  float * d_randomTable,
-                                 cudaInfoStruct cudainfo ){
+                                 cudaInfoStruct * cudainfo ){
 // each thread will take care of a state at once
-  size_t batchAmount = valueTablesLength / cudainfo->numBlocks / cuda->numThreadsPerBlock + 1;
+  size_t batchAmount = valueTablesLength / cudainfo->numBlocks / cudainfo->numThreadsPerBlock + 1;
   unsigned long cursor = 0; // holding the index of the next element to be sent to the kernel
   for ( size_t i = 0; i < batchAmount; ++i){
     kernel_valueTableUpdateWithPolicy<<<cudainfo->numBlocks, cudainfo->numThreadsPerBlock>>>(d_randomTable, 
@@ -229,18 +238,21 @@ void kernel_presetValueTable(float * d_valueTable, long long table_length){
 
 /* the interface for the main function */
 void presetValueTable(float * d_valueTable, unsigned long  table_length, cudaInfoStruct * cudainfo){
-  kernel_presetValueTable<<<cudainfo->numBlocks, cudainfo->numThreadsPerBlock, m * sizeof(size_t) >>>(float * d_valueTable, size_t table_length);
+  dim3 gridSize(cudainfo->numBlocks, 1, 1);
+  dim3 blockSize(cudainfo->numThreadsPerBlock, 1, 1);
+  kernel_presetValueTable<<<gridSize, blockSize, m * sizeof(size_t) >>> ( d_valueTable, table_length);
   return;
 }
 
 /* Gather the system information, fol auto fill in the block number and the thread number per block */
-void gatherSystemInfo(size_t * deviceCount, size_t * numBlocks, size_t * numThreadsPerBlock){
-  cudaDeviceProp deviceProp;
-  cudaGetDeviceProperties(&deviceProp, dev);
-  cudaGetDeviceCount(deviceCount);
+void gatherSystemInfo(cudaInfoStruct * cudainfo){
 
-  *numThreadsPerBlock = deviceProp.maxThreadsPerBlock;
-  numBlocks = _ConvertSMVer2Cores(deviceProp.major, deviceProp.minor) * deviceProp.multiProcessorCount;
+  cudaGetDeviceCount((int*)&(cudainfo->deviceCount));
+  cudaDeviceProp deviceProp;
+  cudaGetDeviceProperties(&deviceProp, 0);
+  (cudainfo->numThreadsPerBlock) = deviceProp.maxThreadsPerBlock;
+  (cudainfo->numBlocks) = _ConvertSMVer2Cores(deviceProp.major, deviceProp.minor) * deviceProp.multiProcessorCount;
+
   return;
 
 }

@@ -2,26 +2,30 @@
 #define _SUPPORT_H
 #include "timer.h"
 #include "parameters.h"
-#include "utils.h"
+//#include "utils.h"
 
-#ifndef max
-#define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
-#endif
-
-
-
-#ifndef min
-#define min( a, b ) ( ((a) < (b)) ? (a) : (b) )
-#endif
 
 struct cudaInfoStruct{
-  size_t deviceCount = 0;
-  size_t numBlocks = 0;
-  size_t numThreadsPerBlock = 0;
+  size_t deviceCount;
+  size_t numBlocks;
+  size_t numThreadsPerBlock;
 };
 
-void evalWithPolicy(float* h_valueTable, float * d_valueTables, cudaInfoStruct * cudainfo);
-void presetValueTable(float * d_valueTable, unsigned long  table_length, cudaInfoStruct * cudainfo);
-void gatherSystemInfo(size_t * deviceCount, size_t * numBlocks, size_t * numThreadsPerBlock);
+
+void readFromDevice(float * h_array, float* d_array, size_t length);
+void passToDevice(float* h_array, float* d_array, size_t length);
+void passToDevice(const float* h_array, float* d_array, size_t length);
+
+void presetValueTable(float * d_valueTable, unsigned long  table_length, cudaInfoStruct * );
+void gatherSystemInfo(cudaInfoStruct *);
+
+void valueTableUpdateWithPolicy( float** d_valueTables, 
+                                 size_t currentTableIdx, 
+                                 size_t depletionIndicator,       // either zero or the expected demand for one day
+                                 float * d_randomTable,
+                                 cudaInfoStruct * cudainfo );
+
+void deviceTableInit(size_t numTables, float ** tables, unsigned long tableLengths, cudaInfoStruct * cudainfo);
+
 
 #endif
