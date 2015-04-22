@@ -5,17 +5,26 @@
 
 #include "dynamic_programming.h"
 
+__device__ inline size_t
+getGlobalIdx_3D_1D() {
+    size_t blockId = blockIdx.x +
+                  blockIdx.y * gridDim.x +
+                  gridDim.x * gridDim.y * blockIdx.z;
+    return blockId * blockDim.x + threadIdx.x;
+}
+
+
 __global__ void
 init_kernel(float *current_values,
-            unsigned d,
-            unsigned c,
-            unsigned batch_size) {
+            size_t d,
+            size_t c,
+            size_t batch_size) {
 
-    unsigned idx = blockDim.x * blockIdx.x + threadIdx.x;
+    size_t idx = getGlobalIdx_3D_1D();
 
     if (idx < batch_size) {
-        unsigned current = c * batch_size + idx;
-        unsigned parent = current - batch_size;
+        size_t current = c * batch_size + idx;
+        size_t parent = current - batch_size;
 
         current_values[current] = current_values[parent] + 1.0;
     }
@@ -25,24 +34,29 @@ init_kernel(float *current_values,
 void
 init_states(float *current_values) {
 
-    unsigned num_states = std::pow(n_capacity, n_dimension);
+    size_t num_states = std::pow(n_capacity, n_dimension);
 
-    for (unsigned d = 0; d < n_dimension; d++) {
-        unsigned batch_size = pow(n_capacity, d);
-        unsigned n_thread = 512;
-        unsigned n_block = batch_size / n_thread + 1;
-        for (unsigned c = 1; c < n_capacity; c++) {
-            init_kernel<<<n_block, n_thread>>>(current_values,
-                                               d, c, batch_size);
+    for (size_t d = 0; d < n_dimension; d++) {
+        size_t batch_size = pow(n_capacity, d);
+
+        size_t n_thread = 512;
+        size_t n_block = batch_size / n_thread + 1;
+
+        dim3 block_dim(n_thread, 1, 1);
+        dim3 grid_dim(4096, n_block / 4096 + 1, 1);
+
+        for (size_t c = 1; c < n_capacity; c++) {
+            init_kernel<<<grid_dim, block_dim>>>(current_values,
+                                                 d, c, batch_size);
         }
     }
 }
 
 
-__device__ inline unsigned
-sum(unsigned *state, unsigned length) {
+__device__ inline int
+sum(int *state, int length) {
 
-    unsigned acc = 0;
+    int acc = 0;
     for (int i = 0; i < length; i++) {
         acc += state[i];
     }
@@ -51,7 +65,7 @@ sum(unsigned *state, unsigned length) {
 
 
 __device__ inline void
-decode(unsigned *state, unsigned index) {
+decode(int *state, int index) {
 
     for (int i = n_dimension - 1; i >= 0; i--) {
         state[i] = index % n_capacity;
@@ -61,11 +75,11 @@ decode(unsigned *state, unsigned index) {
 }
 
 
-__device__ inline unsigned
-encode(unsigned *state) {
+__device__ inline int
+encode(int *state) {
 
-    unsigned acc = 0;
-    for (unsigned i = 1; i < n_dimension + 1; i++) {
+    int acc = 0;
+    for (int i = 1; i < n_dimension + 1; i++) {
         acc *= n_capacity;
         acc += state[i];
     }
@@ -73,11 +87,11 @@ encode(unsigned *state) {
 }
 
 
-__device__ inline unsigned
-substract(unsigned *state, unsigned length, unsigned quantity) {
+__device__ inline int
+substract(int *state, int length, int quantity) {
 
-    unsigned acc = 0;
-    for (unsigned i = 0; i < length; i++) {
+    int acc = 0;
+    for (int i = 0; i < length; i++) {
         if (quantity <= state[i]) {
             acc += quantity;
             state[i] -= quantity;
@@ -93,21 +107,21 @@ substract(unsigned *state, unsigned length, unsigned quantity) {
 
 
 __device__ inline float
-deplete(unsigned *state, unsigned quantity) {
+deplete(int *state, int quantity) {
 
     return unit_salvage * substract(state, n_dimension, quantity);
 }
 
 
 __device__ inline float
-hold(unsigned *state) {
+hold(int *state) {
 
     return unit_hold * sum(state, n_dimension);
 }
 
 
 __device__ inline float
-order(unsigned *state, unsigned quantity) {
+order(int *state, int quantity) {
 
     state[n_dimension] = quantity;
     return unit_order * quantity;
@@ -115,26 +129,26 @@ order(unsigned *state, unsigned quantity) {
 
 
 __device__ inline float
-sell(unsigned *state, unsigned quantity) {
+sell(int *state, int quantity) {
 
     return unit_price * substract(state, n_dimension+1, quantity);
 }
 
 
 __device__ inline float
-dispose(unsigned *state) {
-    unsigned disposal = state[0];
+dispose(int *state) {
+    int disposal = state[0];
     state[0] = 0;
     return unit_disposal * disposal;
 }
 
 
 __device__ inline float
-revenue(unsigned *state,
-        unsigned current,
-        unsigned n_depletion,
-        unsigned n_order,
-        unsigned n_demand) {
+revenue(int *state,
+        size_t current,
+        int n_depletion,
+        int n_order,
+        int n_demand) {
 
     decode(state, current);
 
@@ -151,34 +165,34 @@ revenue(unsigned *state,
 
 __device__ void
 optimize(float *current_values,
-         unsigned current,
-         unsigned *depletion,
-         unsigned min_depletion,
-         unsigned max_depletion,
-         unsigned *order,
-         unsigned min_order,
-         unsigned max_order,
+         size_t current,
+         dp_int *depletion,
+         int min_depletion,
+         int max_depletion,
+         dp_int *order,
+         int min_order,
+         int max_order,
          const float *demand_pdf,
-         unsigned min_demand,
-         unsigned max_demand,
+         int min_demand,
+         int max_demand,
          float *future_values) {
 
-    unsigned state[n_dimension+1] = {};
+    int state[n_dimension+1] = {};
     decode(state, current);
 
-    unsigned n_depletion = 0;
-    unsigned n_order = 0;
+    int n_depletion = 0;
+    int n_order = 0;
     float max_value = 0.0;
 
-    for (unsigned i = min_depletion; i < max_depletion; i++) {
-        for (unsigned j = min_order; j < max_order; j++) {
+    for (int i = min_depletion; i < max_depletion; i++) {
+        for (int j = min_order; j < max_order; j++) {
 
             float expected_value = 0.0;
 
-            for (unsigned k = min_demand; k < max_demand; k++) {
+            for (int k = min_demand; k < max_demand; k++) {
 
                 float value = revenue(state, current, i, j, k);
-                unsigned future = encode(state);
+                int future = encode(state);
                 value += discount * future_values[future];
 
                 expected_value += demand_pdf[k - min_demand] * value;
@@ -192,29 +206,29 @@ optimize(float *current_values,
     }
 
     current_values[current] = max_value;
-    depletion[current] = n_depletion;
-    order[current] = n_order;
+    depletion[current] = (dp_int) n_depletion;
+    order[current] = (dp_int) n_order;
 }
 
 
 __global__ void
 iter_kernel(float *current_values,
-            unsigned *depletion,
-            unsigned *order,
+            dp_int *depletion,
+            dp_int *order,
             const float *demand_pdf,
-            unsigned min_demand,
-            unsigned max_demand,
+            dp_int min_demand,
+            dp_int max_demand,
             float *future_values,
-            unsigned d,
-            unsigned c,
-            unsigned batch_size) {
+            size_t d,
+            size_t c,
+            size_t batch_size) {
 
-    unsigned idx = blockDim.x * blockIdx.x + threadIdx.x;
+    size_t idx = getGlobalIdx_3D_1D();
 
     if (idx < batch_size) {
 
-        unsigned current = c * batch_size + idx;
-        unsigned parent = current - batch_size;
+        size_t current = c * batch_size + idx;
+        size_t parent = current - batch_size;
 
         if (depletion[parent] == 0) {
 
@@ -256,32 +270,37 @@ iter_kernel(float *current_values,
 
         }
 
+        __threadfence_system();
     }
 }
 
 
 void
 iter_states(float *current_values,
-            unsigned *depletion,
-            unsigned *order,
+            dp_int *depletion,
+            dp_int *order,
             const float *demand_pdf,
             float *future_values) {
 
-    unsigned num_states = std::pow(n_capacity, n_dimension);
+    size_t num_states = std::pow(n_capacity, n_dimension);
 
-    for (unsigned d = 0; d < n_dimension; d++) {
-        unsigned batch_size = pow(n_capacity, d);
-        unsigned n_thread = 512;
-        unsigned n_block = batch_size / n_thread + 1;
-        for (unsigned c = 1; c < n_capacity; c++) {
-            iter_kernel<<<n_block, n_thread>>>(current_values,
-                                               depletion,
-                                               order,
-                                               demand_pdf,
-                                               min_demand,
-                                               max_demand,
-                                               future_values,
-                                               d, c, batch_size);
+    for (size_t d = 0; d < n_dimension; d++) {
+        size_t batch_size = pow(n_capacity, d);
+        size_t n_thread = 512;
+        size_t n_block = batch_size / n_thread + 1;
+
+        dim3 block_dim(n_thread, 1, 1);
+        dim3 grid_dim(4096, n_block / 4096 + 1, 1);
+
+        for (size_t c = 1; c < n_capacity; c++) {
+            iter_kernel<<<grid_dim, block_dim>>>(current_values,
+                                                 depletion,
+                                                 order,
+                                                 demand_pdf,
+                                                 min_demand,
+                                                 max_demand,
+                                                 future_values,
+                                                 d, c, batch_size);
         }
     }
 }
