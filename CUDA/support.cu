@@ -5,6 +5,8 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
+extern unsigned long  valueTablesLength;
+
 //the MSB is the number of items to be expired and the LSB is the number of the newly purchased items
 /******** kernels ********/
 
@@ -120,17 +122,23 @@ void deviceTableInit(size_t numTables, float ** tables, unsigned long tableLengt
 
 /* evaluate the state value given z and q */
 /* return th expected value over the demands */
-__device__ inline
-float stateValue( size_t dataIdx, size_t expiringToday, size_t storageToday, size_t z, size_t q, size_t * s_demandWeight, size_t numDemands){
+// to complicit to be an inline function
+__device__
+float stateValue( size_t expiringToday, 
+                  size_t storageToday, 
+                  size_t z, size_t q, 
+                  size_t * d_randomTable, 
+                  size_t min_demand, size_t max_demand){
+
          float profit = 0;
          float sum = 0;
          for ( size_t i = 0; i < numDemands; ++i){
                  profit = s * z                                                             // the money collected depletion 
                         - h * max(int(storageToday) - z , 0)                                // the cost for holding all the items 
-                        - alpha * c * q                                                     // the money spent on ordering new items
+                        - alpha * c * q                                                       // the money spent on ordering new items
                         + alpha * r * min(i, storageToday - z + q)               // the total income from selling the products to the customers
                         - alpha * theta * max(expiringToday - z - i, 0);// the money spent on the expired items
-                 sum += profit * s_demandWeight[i];
+                 sum += profit * d_randomTable[i];
          }
 
          return sum;
@@ -138,28 +146,68 @@ float stateValue( size_t dataIdx, size_t expiringToday, size_t storageToday, siz
 
 /* use one d arrangement here */
 __global__ 
-void kernel_valueTableUpdateWithPolicy( float* d_randomTable,
-                             float* d_valueTable, 
-                             float* d_tempTable,
-                             size_t iteratingDim,       // the coordinate that we are processing now
-                             size_t batchIdx           // the batch index of the kernel launch for that coordinate... together with the iteratingDim, we should be able to obtain the data index
-                             ){
+void kernel_valueTableUpdateWithPolicy(  float* d_randomTable,
+                                         float* d_valueTable,     // note both the value table and the temp table here hold the exact starting index for this kernel launch
+                                         float* d_tempTable,
+                                         size_t depletionIndicator,
+                                         size_t batchIdx
+                                         ){
+  // declare the local variables 
+  extern __shared__ size_t mDIdx[];
+  float bestresult = 0;
+  float bestq = 0;
+  float tempresult = 0;
+  size_t storageToday = 0;
+  // this is both the thread index and the data index in this batch
+  size_t myIdx = blockIdx.x * gridDim.x + threadIdx.x;
+  size_t dataIdx = myIdx + batchIdx * gridDim.x * blockDim.x;
 
-  // allocate the shared memory for the demands
-  extern __shared__ float s_demands[];
+  oneDtomD(dataIdx,mDIdx);
 
-  // the cascading information is given by the iteratingDim
-  // assume all the nodes here has the oversight -- the starting several elements are computed by the cpu
-  int myIdx = blockIdx.x * blockDim + threadIdx.x;
-  long dataIdx = iteratingDim * ipow()
+  if(depletionIndicator){
+
+  }
+  else{
+        // starting the brute force algorithm on q directly
+        for ( size_t q = 0; q < k + 1; ++q){
+              storageToday = checkStorage(mDIdx);
+              tempresult = stateValue( mDIdx[0], 
+                                       storageToday, 
+                                       0,  q, 
+                                       d_randomTable, 
+                                       min_demand, max_demand);
+          
+              if (tempresult > bestresult){
+                bestresult = tempresult;
+                bestq = q;
+              }
+    
+        }
+        d_tempTable[dataIdx] = bestresult; // the corresponding q stores in the bestq
+
+  }
 
 }
 /* update the value table for one day */
 /* only need to hold 2 tables and update each one at a time */
 void valueTableUpdateWithPolicy( float** d_valueTables, 
-                                 size_t currentTable, 
-                                 size_t numDepletion, 
+                                 size_t currentTableIdx, 
+                                 size_t depletionIndicator,       // either zero or the expected demand for one day
+                                 float * d_randomTable,
                                  cudaInfoStruct cudainfo ){
+// each thread will take care of a state at once
+  size_t batchAmount = valueTablesLength / cudainfo->numBlocks / cuda->numThreadsPerBlock + 1;
+  unsigned long cursor = 0; // holding the index of the next element to be sent to the kernel
+  for ( size_t i = 0; i < batchAmount; ++i){
+    kernel_valueTableUpdateWithPolicy<<<cudainfo->numBlocks, cudainfo->numThreadsPerBlock>>>(d_randomTable, 
+                                                                                              d_valueTables[1 - currentTableIdx], 
+                                                                                              d_valueTables[currentTableIdx], 
+                                                                                              depletionIndicator,
+                                                                                              i);
+    cursor += cudainfo->numBlocks * cudainfo->numThreadsPerBlock;
+  }
+
+  return;
 
 }
 
@@ -183,26 +231,6 @@ void kernel_presetValueTable(float * d_valueTable, long long table_length){
 void presetValueTable(float * d_valueTable, unsigned long  table_length, cudaInfoStruct * cudainfo){
   kernel_presetValueTable<<<cudainfo->numBlocks, cudainfo->numThreadsPerBlock, m * sizeof(size_t) >>>(float * d_valueTable, size_t table_length);
   return;
-}
-/* the main function which takes care of the dispatch and deploy */
-void evalWithPolicy(float* h_valueTable, float ** d_valueTables, unsigned long tableLength, cudaInfoStruct * cudainfo){
-// the policy is : the depletion amount is always zero except the first day
-        size_t currentTable = 0;      // the index of table to be updated in next action
-
-        /*first init make one of the d_valueTables to the edge values*/
-        presetValueTable(d_valueTables[currentTable], valueTablesLength, cudainfo);
-        currentTable = 1 - currentTable;
-
-        /* T periods in total */
-        for ( size_t iPeriod = 0; iPeriod < T; ++iPeriod){
-          if(iPeriod != T-1){
-            valueTableUpdateWithPolicy( d_valueTables, currentTable, 0, cudainfo);
-            currentTable = 1 - currentTable;
-          }
-        }
-        // the final result stores in the (1 - currentTable)
-        readFromDevice(h_valueTable, d_valueTables[1 - currentTable], tableLength);
-        return;
 }
 
 /* Gather the system information, fol auto fill in the block number and the thread number per block */
