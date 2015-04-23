@@ -2,6 +2,8 @@
 #define _SUPPORT_H
 #include "timer.h"
 #include "parameters.h"
+#include <cstdlib>
+#include <ctime>
 //#include "utils.h"
 
 
@@ -15,6 +17,7 @@ struct cudaInfoStruct{
 void readFromDevice(float * h_array, float* d_array, size_t length);
 void passToDevice(float* h_array, float* d_array, size_t length);
 void passToDevice(const float* h_array, float* d_array, size_t length);
+void readfromDevice(float * h_array, float* d_array, size_t length);
 
 void presetValueTable(float * d_valueTable, unsigned long  table_length, cudaInfoStruct * );
 void gatherSystemInfo(cudaInfoStruct *);
@@ -26,6 +29,7 @@ void valueTableUpdateWithPolicy( float** d_valueTables,
                                  cudaInfoStruct * cudainfo );
 
 void deviceTableInit(size_t numTables, float ** tables, unsigned long tableLengths, cudaInfoStruct * cudainfo);
+void test();
 
 
 #endif
