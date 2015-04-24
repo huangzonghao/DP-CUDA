@@ -115,8 +115,8 @@ void readFromDevice(float * h_array, float* d_array, size_t length){
 /* set the init value of all entries in the value table to 0 */
 __global__ 
 void kernel_deviceTableInit(float* d_valueTable, size_t arrayLength  ){    
-  size_t stepSize = gridDim.x * gridDim.y * blockDim.x * blockDim.y;  // the total number of threads which have been assigned for this task
-  size_t myStartIdx = (gridDim.x * blockIdx.y + blockIdx.x - 1) * blockDim.x * blockDim.y +  threadIdx.y * blockDim.x + threadIdx.x;
+  size_t stepSize = gridDim.x * blockDim.x;  // the total number of threads which have been assigned for this task
+  size_t myStartIdx = blockDim.x * blockIdx.x + threadIdx.x;
   for (size_t i = myStartIdx; i < arrayLength; i += stepSize)
     d_valueTable[i] = 0;
 
@@ -139,8 +139,8 @@ void deviceTableInit(size_t numTables, float ** tables, size_t tableLengths, cud
 
 
 /* evaluate the state value given z and q */
-/* return th expected value over the demands */
-// to complicit to be an inline function
+/* return the expected value over the demands */
+// i don't have to get all the storage information to get the state value of today
 __device__
 float stateValue( size_t expiringToday, 
                   int storageToday, 
@@ -160,6 +160,7 @@ float stateValue( size_t expiringToday,
         }
 
         return sum;
+
 }
 
 /* use one d arrangement here */
@@ -167,43 +168,79 @@ __global__
 void kernel_valueTableUpdateWithPolicy(  float* d_randomTable,
                                          float* d_valueTable,     // note both the value table and the temp table here hold the exact starting index for this kernel launch
                                          float* d_tempTable,
+                                         size_t* d_mdidx,
                                          size_t depletionIndicator,
+                                         size_t valueTablesLength,
                                          size_t batchIdx
                                          ){
-  // declare the local variables 
-  extern __shared__ size_t mDIdx[];
   float bestresult = 0;
   //float bestq = 0;
   float tempresult = 0;
   size_t storageToday = 0;
   // this is both the thread index and the data index in this batch
-  size_t myIdx = blockIdx.x * gridDim.x + threadIdx.x;
+  size_t myIdx = blockIdx.x * blockDim.x + threadIdx.x;
   size_t dataIdx = myIdx + batchIdx * gridDim.x * blockDim.x;
 
-  decode(mDIdx, dataIdx);
+  // size_t testnum = 1601;
+  // if(dataIdx == testnum){
+  //   printf(" \n Now printing the calculation of the entry \n %d \n", dataIdx);
+  // }
 
-  if(depletionIndicator){
+  if(dataIdx < valueTablesLength){
 
-  }
-  else{
-        // starting the brute force algorithm on q directly
-        for ( size_t q = 0; q < k + 1; ++q){
-              storageToday = checkStorage(mDIdx);
-              tempresult = stateValue( mDIdx[0], 
-                                       storageToday, 
-                                       0,  q, 
-                                       d_randomTable
-                                      );
-          
-              if (tempresult > bestresult){
-                bestresult = tempresult;
-                //bestq = q;
-              }
-    
-        }
-        d_tempTable[dataIdx] = bestresult; // the corresponding q stores in the bestq
+          decode(&d_mdidx[myIdx * m], dataIdx);
 
-  }
+          if(depletionIndicator){
+                  storageToday = checkStorage(&d_mdidx[myIdx * m]);
+
+                for ( size_t q = 0; q < k; ++q){
+                      tempresult = stateValue( d_mdidx[myIdx * m], 
+                                               storageToday, 
+                                               depletionIndicator * T,  q, 
+                                               d_randomTable
+                                              );
+
+                      if (tempresult > bestresult){
+                        bestresult = tempresult;
+                        //bestq = q;
+                      }
+            
+                }
+
+                d_tempTable[dataIdx] = bestresult;
+
+          }
+          else{
+                // starting the brute force algorithm on q directly
+                  storageToday = checkStorage(&d_mdidx[myIdx * m]);
+
+                  // if( dataIdx == testnum){
+                  //   printf("\n storage today : %d ", storageToday);
+                  //   printf("\n expiring today : %d ", d_mdidx[myIdx * m]);
+                  // }
+
+                for ( size_t q = 0; q < k; ++q){
+                      tempresult = stateValue( d_mdidx[myIdx * m], 
+                                               storageToday, 
+                                               0,  q, 
+                                               d_randomTable
+                                              );
+                  // if( dataIdx == testnum){
+                  //   printf("\n tempresult  <%d> : %f",q, tempresult);
+                  // }
+                  
+                      if (tempresult > bestresult){
+                        bestresult = tempresult;
+                        //bestq = q;
+                      }
+            
+                }
+                  // if( dataIdx == testnum){
+                  //   printf("\n");
+                  // }
+                d_tempTable[dataIdx] = bestresult; // the corresponding q stores in the bestq
+          }
+    }
 
 }
 /* update the value table for one day */
@@ -213,42 +250,40 @@ void valueTableUpdateWithPolicy( float** d_valueTables,
                                  size_t depletionIndicator,       // either zero or the expected demand for one day
                                  float * d_randomTable,
                                  cudaInfoStruct * cudainfo ){
-// each thread will take care of a state at once
+
+  // each thread will take care of a state at once
+  
+  size_t * d_mdidx; 
+  // assign to each thread some global memory to store the m D information
+  checkCudaErrors(cudaMalloc(&d_mdidx, cudainfo->numBlocks * cudainfo->numThreadsPerBlock * m * sizeof(size_t)));
+
+
   size_t batchAmount = valueTablesLength / cudainfo->numBlocks / cudainfo->numThreadsPerBlock + 1;
-  size_t cursor = 0; // holding the index of the next element to be sent to the kernel
+
   for ( size_t i = 0; i < batchAmount; ++i){
-    kernel_valueTableUpdateWithPolicy<<<cudainfo->numBlocks, cudainfo->numThreadsPerBlock>>>(d_randomTable, 
-                                                                                              d_valueTables[1 - currentTableIdx], 
-                                                                                              d_valueTables[currentTableIdx], 
-                                                                                              depletionIndicator,
-                                                                                              i);
-    cursor += cudainfo->numBlocks * cudainfo->numThreadsPerBlock;
+
+    kernel_valueTableUpdateWithPolicy<<<cudainfo->numBlocks, cudainfo->numThreadsPerBlock>>>(d_randomTable, d_valueTables[1 - currentTableIdx], d_valueTables[currentTableIdx], d_mdidx,depletionIndicator, valueTablesLength, i);
   }
 
+
+  checkCudaErrors(cudaFree(d_mdidx));
   return;
-
-}
-
-void readfromDevice(float * h_array, float* d_array, size_t length){
-        srand(time(0));
-        for (size_t i = 0; i < valueTablesLength; ++i){
-          h_array[i] = rand() * k * c /RAND_MAX;
-        }
 }
 
 
 /* write in the values of the last day in the period */
 
+// note the shared memory is shared among all the threads and has a limit per block
 __global__
-void kernel_presetValueTable(float * d_valueTable, size_t table_length){
-  extern __shared__ size_t mDIdx[];
+void kernel_presetValueTable(float * d_valueTable, size_t * d_mdidx, size_t table_length){
+
   size_t stepSize = gridDim.x * blockDim.x;  // the total number of threads which have been assigned for this task, oneD layout everywhere
   size_t myStartIdx = blockIdx.x * blockDim.x + threadIdx.x;
-  for (size_t i = myStartIdx; i < table_length; i += stepSize){
-    decode(mDIdx, i);
-    d_valueTable[i] = checkStorage(mDIdx) * s;
-  }
 
+  for (size_t i = myStartIdx; i < table_length; i += stepSize){
+    decode(&d_mdidx[myStartIdx * m], i);
+    d_valueTable[i] = checkStorage(&d_mdidx[myStartIdx * m]) * s;
+  }
   __syncthreads(); 
 }
 
@@ -256,11 +291,15 @@ void kernel_presetValueTable(float * d_valueTable, size_t table_length){
 void presetValueTable(float * d_valueTable, size_t  table_length, cudaInfoStruct * cudainfo){
   dim3 gridSize(cudainfo->numBlocks, 1, 1);
   dim3 blockSize(cudainfo->numThreadsPerBlock, 1, 1);
-  kernel_presetValueTable<<<gridSize, blockSize, m * sizeof(size_t) >>> ( d_valueTable, table_length);
+  size_t * d_mdidx; 
+  // assign to each thread some global memory to store the m D information
+  checkCudaErrors(cudaMalloc(&d_mdidx, cudainfo->numBlocks * cudainfo->numThreadsPerBlock * m * sizeof(size_t)));
+  kernel_presetValueTable<<<gridSize, blockSize>>> ( d_valueTable, d_mdidx, table_length);
+  checkCudaErrors(cudaFree(d_mdidx));
   return;
 }
 
-/* Gather the system information, fol auto fill in the block number and the thread number per block */
+/* Gather the system information, for auto fill in the block number and the thread number per block */
 void gatherSystemInfo(cudaInfoStruct * cudainfo){
 
   cudaGetDeviceCount((int*)&(cudainfo->deviceCount));
@@ -268,13 +307,15 @@ void gatherSystemInfo(cudaInfoStruct * cudainfo){
   cudaDeviceProp deviceProp;
   cudaGetDeviceProperties(&deviceProp, 0);
   (cudainfo->numThreadsPerBlock) = deviceProp.maxThreadsPerBlock;
-  (cudainfo->numBlocks) = _ConvertSMVer2Cores(deviceProp.major, deviceProp.minor) * deviceProp.multiProcessorCount;                                                     //if (T > 1) {cout << " CUDA error at /home/ramp/huangzonghao/ielm2/support.cu:104 code=77(cudaErrorIllegalAddress) exit : fatal error " << endl; exit(-1); };
-
+  (cudainfo->numBlocks) = _ConvertSMVer2Cores(deviceProp.major, deviceProp.minor) * deviceProp.multiProcessorCount;
 
   return;
 
 }
 
+
+
+/*************** testing functions ********************/
 __global__
 void kernel_test(size_t i, size_t * list){
   size_t num = 0;

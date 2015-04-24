@@ -6,10 +6,16 @@ size_t  valueTablesLength;
 
 void printResult(float* valueTable, size_t length, string title = "value table"){
     cout << endl << "Now starting to print out the " << title << ": "  << endl;
-    for (size_t i = 0; i < length - 1; ++i){
-        cout << valueTable[i] << ", ";
+    // for (size_t i = 0; i < length - 1; ++i){
+    //         cout << valueTable[i] << ", ";
+    // }
+    // cout << valueTable[length - 1] << endl;
+
+
+    for (size_t i = 0; i < length; ++i){
+      cout << " the node : " << i << " has value : " << valueTable[i] << endl;
+
     }
-    cout << valueTable[length - 1] << endl;
 
     return;
 
@@ -18,7 +24,7 @@ void printResult(float* valueTable, size_t length, string title = "value table")
 int main(){
 	/* declare variables */
     /* system features */
-    test();
+
     cudaInfoStruct cudainfo;
     cudainfo.deviceCount = 0;
     cudainfo.numBlocks = 0;
@@ -38,6 +44,7 @@ int main(){
 	float ** d_valueTables;
     d_valueTables = (float **)malloc(2 * sizeof(float *));
     float * d_randomTable;
+
     
     valueTablesLength = pow(k, m);
     cout <<"valueTablesLength: " <<  valueTablesLength << endl;
@@ -63,41 +70,34 @@ int main(){
 
     /* evalueate the value of the table with the given parameters and the given policy f */
     // the policy is : the depletion amount is always zero except the first day
-    // size_t currentTableIdx = 0;      // the index of table to be updated in next action
+    size_t currentTableIdx = 0;      // the index of table to be updated in next action
 
     // /*first init make one of the d_valueTables to the edge values*/
-    // presetValueTable(d_valueTables[currentTableIdx], valueTablesLength, &cudainfo);
-    // currentTableIdx = 1 - currentTableIdx;
+    presetValueTable(d_valueTables[currentTableIdx], valueTablesLength, &cudainfo);
+    currentTableIdx = 1 - currentTableIdx;
+
+    readFromDevice(h_valueTable, d_valueTables[1 - currentTableIdx], valueTablesLength);
 
 
 
     // /* T periods in total */
-    // for ( size_t iPeriod = T; iPeriod > 0; --iPeriod){
-    //   if(iPeriod != 1){
-    //     valueTableUpdateWithPolicy( d_valueTables, currentTableIdx, 0, d_randomTable, &cudainfo);
-    //     currentTableIdx = 1 - currentTableIdx;
-    //   }
-    //   else{
-    //     // first calculate the expect demand for each day
-    //     float expectDemand = 0;
-    //     for (int i = min_demand; i < max_demand - min_demand + 1; ++i){
-    //         expectDemand += i * demand_distribution[i];
-    //     }
-    //     valueTableUpdateWithPolicy( d_valueTables, currentTableIdx, (size_t)ceil(expectDemand), d_randomTable, &cudainfo);
-    //   }
-    // }
-
-    
-    // the final result stores in the (1 - currentTableIdx)
-    // readfromDevice(h_valueTable, d_valueTables[1 - currentTableIdx], valueTablesLength);
-
-    // readFromDevice(h_valueTable, d_valueTables[1 - currentTableIdx], valueTablesLength);
-
-    /* output the file */
-    // printResult(h_valueTable);
-
-
-
+    for ( size_t iPeriod = T; iPeriod > 0; --iPeriod){
+      if(iPeriod != 1){
+        valueTableUpdateWithPolicy( d_valueTables, currentTableIdx, 0, d_randomTable, &cudainfo);
+        currentTableIdx = 1 - currentTableIdx;
+      }
+      else{
+        // first calculate the expect demand for each day
+        float expectDemand = 0;
+        for (int i = min_demand; i < max_demand - min_demand + 1; ++i){
+            expectDemand += i * demand_distribution[i];
+        }
+                // cerr << " the expected demand : " << endl << (size_t)ceil(expectDemand) << endl;
+        valueTableUpdateWithPolicy( d_valueTables, currentTableIdx, (size_t)ceil(expectDemand), d_randomTable, &cudainfo);
+      }
+    }
+    readFromDevice(h_valueTable, d_valueTables[1 - currentTableIdx], valueTablesLength);
+    printResult(h_valueTable, valueTablesLength, "Value table");
 
     return 0;
 }

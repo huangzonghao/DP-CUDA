@@ -14,7 +14,7 @@ const size_t m = 4;
 const size_t k = 10;
 
 /* number of periods */
-const size_t T = 1;
+const size_t T = 5;
 
 // /* number of samples */
 // const size_t numSamples = 10;
@@ -32,7 +32,7 @@ const float c = 3;
 const float theta = 2;
 
 /* the salvage benefit for one item */
-const float s = 1;
+const float s = 0.2;
 
 /* the discount rate */
 const float alpha = 0.95;
