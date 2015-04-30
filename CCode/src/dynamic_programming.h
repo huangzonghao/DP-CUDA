@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define dp_int int_fast8_t
+typedef int_fast8_t dp_int
 
 extern void init_states(float *);
 extern void iter_states(float *,
