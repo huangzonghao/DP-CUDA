@@ -8,8 +8,8 @@
 __device__ inline size_t
 getGlobalIdx_3D_1D() {
     size_t blockId = blockIdx.x +
-                  blockIdx.y * gridDim.x +
-                  gridDim.x * gridDim.y * blockIdx.z;
+                     blockIdx.y * gridDim.x +
+                     gridDim.x * gridDim.y * blockIdx.z;
     return blockId * blockDim.x + threadIdx.x;
 }
 
@@ -38,7 +38,6 @@ init_states(float *current_values) {
 
     for (size_t d = 0; d < n_dimension; d++) {
         size_t batch_size = pow(n_capacity, d);
-
         size_t n_thread = 512;
         size_t n_block = batch_size / n_thread + 1;
 
@@ -172,9 +171,6 @@ optimize(float *current_values,
          dp_int *order,
          int min_order,
          int max_order,
-         const float *demand_pdf,
-         int min_demand,
-         int max_demand,
          float *future_values) {
 
     int state[n_dimension+1] = {};
@@ -195,7 +191,7 @@ optimize(float *current_values,
                 int future = encode(state);
                 value += discount * future_values[future];
 
-                expected_value += demand_pdf[k - min_demand] * value;
+                expected_value += demand_distribution[k - min_demand] * value;
             }
             if (expected_value > max_value + 1e-6) {
                 max_value = expected_value;
@@ -215,9 +211,6 @@ __global__ void
 iter_kernel(float *current_values,
             dp_int *depletion,
             dp_int *order,
-            const float *demand_pdf,
-            dp_int min_demand,
-            dp_int max_demand,
             float *future_values,
             size_t d,
             size_t c,
@@ -242,10 +235,6 @@ iter_kernel(float *current_values,
                      order,
                      0,
                      n_capacity,
-                     // n_demand: probability distribution and range [min, max)
-                     demand_pdf,
-                     min_demand,
-                     max_demand,
                      // future utility for reference
                      future_values);
 
@@ -261,10 +250,6 @@ iter_kernel(float *current_values,
                      order,
                      0,
                      n_capacity,
-                     // n_demand: probability distribution and range [min, max)
-                     demand_pdf,
-                     min_demand,
-                     max_demand,
                      // future utility for reference
                      future_values);
 
@@ -279,7 +264,6 @@ void
 iter_states(float *current_values,
             dp_int *depletion,
             dp_int *order,
-            const float *demand_pdf,
             float *future_values) {
 
     size_t num_states = std::pow(n_capacity, n_dimension);
@@ -296,9 +280,6 @@ iter_states(float *current_values,
             iter_kernel<<<grid_dim, block_dim>>>(current_values,
                                                  depletion,
                                                  order,
-                                                 demand_pdf,
-                                                 min_demand,
-                                                 max_demand,
                                                  future_values,
                                                  d, c, batch_size);
         }

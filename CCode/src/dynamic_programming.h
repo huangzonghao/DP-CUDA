@@ -3,13 +3,20 @@
 
 #include <stdint.h>
 
-typedef int_fast8_t dp_int
+#define dp_int int_fast8_t
+
+#ifndef __device__
+#define __device__
+#endif
+
+#ifndef __constant__
+#define __constant__
+#endif
 
 extern void init_states(float *);
 extern void iter_states(float *,
                         dp_int *,
                         dp_int *,
-                        const float *,
                         float *);
 
 const int n_period = 1;
@@ -28,6 +35,7 @@ const float discount = 0.95;
 const int min_demand = 0;
 const int max_demand = 20;
 
+__device__ __constant__
 const float demand_distribution[max_demand - min_demand] = {
     0.00033546, 0.0026837,  0.0107348,  0.02862614, 0.05725229,
     0.09160366, 0.12213822, 0.13958653, 0.13958653, 0.12407692,
