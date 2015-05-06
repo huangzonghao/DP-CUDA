@@ -1,11 +1,22 @@
 #ifndef DYNAMIC_PROGRAMMING_H
 #define DYNAMIC_PROGRAMMING_H
 
+#include <stdint.h>
+
+#define dp_int int_fast8_t
+
+#ifndef __device__
+#define __device__
+#endif
+
+#ifndef __constant__
+#define __constant__
+#endif
+
 extern void init_states(float *);
 extern void iter_states(float *,
-                        unsigned *,
-                        unsigned *,
-                        const float *,
+                        dp_int *,
+                        dp_int *,
                         float *);
 
 // The number of n_thread for each block
@@ -14,8 +25,8 @@ const unsigned n_thread = 512;
 
 const unsigned n_period = 3;
 
-const unsigned n_dimension = 6;
-const unsigned n_capacity = 10;
+const int n_dimension = 9;
+const int n_capacity = 10;
 
 const float unit_salvage = 1.0;
 const float unit_hold = -0.5;
@@ -25,9 +36,10 @@ const float unit_disposal = -2.0;
 
 const float discount = 0.95;
 
-const unsigned min_demand = 0;
-const unsigned max_demand = 20;
+const int min_demand = 0;
+const int max_demand = 20;
 
+__device__ __constant__
 const float demand_distribution[max_demand - min_demand] = {
     0.00033546, 0.0026837,  0.0107348,  0.02862614, 0.05725229,
     0.09160366, 0.12213822, 0.13958653, 0.13958653, 0.12407692,
