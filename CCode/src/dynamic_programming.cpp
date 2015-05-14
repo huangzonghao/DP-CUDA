@@ -4,7 +4,7 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
-#include "dynamic_programming.h"
+#include "dp_model.h"
 
 #define checkCudaErrors(val) check( (val), #val, __FILE__, __LINE__)
 
@@ -48,17 +48,6 @@ main() {
 
     cudaSetDeviceFlags(cudaDeviceMapHost);
 
-    cudaHostGetDevicePointer((void **)&d_current_values,
-                                             (void *)h_current_values, 0);
-    cudaHostGetDevicePointer((void **)&d_future_values,
-                                             (void *)h_future_values, 0);
-    cudaHostGetDevicePointer((void **)&d_depletion,
-                                             (void *)h_depletion, 0);
-    cudaHostGetDevicePointer((void **)&d_order,
-                                             (void *)h_order, 0);
-
-    init_states(d_current_values);
-
 
     checkCudaErrors(cudaHostGetDevicePointer((void **)&d_current_values,
                                              (void *)h_current_values, 0));
@@ -72,6 +61,8 @@ main() {
 
     init_states(d_current_values);
 
+    std::cout << "state,depletion,order,value" << std::endl;
+
     for (int i = 0; i < n_period; i++) {
 
         iter_states(d_current_values,
@@ -79,15 +70,23 @@ main() {
                     d_order,
                     d_future_values);
 
-        checkCudaErrors(cudaDeviceSynchronize());
 
-
-        for (size_t current = num_states-100; current < num_states; current++) {
-            std::cout << "Calculating state: " << current << " depletion: " << static_cast<int>(h_depletion[current]);
-            std::cout << " order: " << static_cast<int>(h_order[current]) << " value: " << h_current_values[current];
-            std::cout << std::endl;
+        for (size_t idx = 0; idx < num_states; idx++) {
+            std::cout << idx << ',' << static_cast<int>(h_depletion[idx]) << ',';
+            std::cout << static_cast<int>(h_order[idx]) << ',' << h_current_values[idx];
+            std::cout << '\n';
         }
+        std::cout << std::endl;
+
+        float *tmp = d_future_values;
+        d_future_values = d_current_values;
+        d_current_values = tmp;
+
+        tmp = h_future_values;
+        h_future_values = h_current_values;
+        h_current_values = tmp;
     }
+
 
     checkCudaErrors(cudaFreeHost((void *)h_current_values));
     checkCudaErrors(cudaFreeHost((void *)h_future_values));
