@@ -1,6 +1,8 @@
 #include "dp_model.h"
 
 
+// Helper function to get CUDA thread id
+// whenever we use __device__ function
 __device__ inline size_t
 get_thread_id() {
 
@@ -11,6 +13,7 @@ get_thread_id() {
 }
 
 
+// Handcraft array summation
 __device__ inline int
 sum(int *state, int length) {
 
@@ -144,11 +147,13 @@ optimize(float *current_values,
          dp_int *order,
          int min_order,
          int max_order,
-         float *future_values) {
+         float *future_values,
+         int period) {
 
     // Allocate a memory buffer on stack
     // So we don't need to do it for every loop
-    // The last dimension are used to store the ordering
+    // Last dimension are used to store the ordering
+    // which could be used for sale
     int state[n_dimension+1] = {};
     decode(state, current);
 
@@ -156,18 +161,20 @@ optimize(float *current_values,
     int n_order = 0;
     float max_value = 0.0;
 
+    struct Demand demand = demand_distribution_at_period[period];
+
     for (int i = min_depletion; i < max_depletion; i++) {
         for (int j = min_order; j < max_order; j++) {
 
             float expected_value = 0.0;
 
-            for (int k = min_demand; k < max_demand; k++) {
+            for (int k = demand.min_demand; k < demand.max_demand; k++) {
 
-                // Initialize the ``state`` array
-                // before each call of ``revenue()``
+                // Always initialize state array before calling of revenue()
+                // As the value is corrupted and can't be used again
                 decode(state, current);
 
-                // By calling ``revenue()``, the state array
+                // By calling revenue(), the state array
                 // now stores the state for future
                 float value = revenue(state, current, i, j, k);
 
@@ -176,7 +183,7 @@ optimize(float *current_values,
 
                 value += discount * future_values[future];
 
-                expected_value += demand_distribution[k - min_demand] * value;
+                expected_value += demand.distribution[k - demand.min_demand] * value;
             }
 
             // Simply taking the moving maximum

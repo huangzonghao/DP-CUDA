@@ -4,9 +4,13 @@
 
 #include <cuda.h>
 
+// Hack: including source files is bad in general!
+// But we know it is not going to be used anywhere else
+// If you do, write a header file and include it instead!
 #include "dp_model.cu"
 
 
+// Using these values for general CUDA GPU is just fine
 inline void
 get_grid_dim(dim3* block_dim, dim3* grid_dim, size_t batch_size) {
 
@@ -36,7 +40,7 @@ init_kernel(float *current_values,
 }
 
 
-// plain C function for interact with CUDA
+// Plain C function for interact with kernel
 void
 init_states(float *current_values) {
 
@@ -53,6 +57,10 @@ init_states(float *current_values) {
                                                  d, c, batch_size);
         }
     }
+
+    cudaDeviceSynchronize();
+    cudaThreadSynchronize();
+
 }
 
 
@@ -62,6 +70,7 @@ iter_kernel(float *current_values,
             dp_int *depletion,
             dp_int *order,
             float *future_values,
+            int period,
             size_t d,
             size_t c,
             size_t batch_size) {
@@ -76,46 +85,43 @@ iter_kernel(float *current_values,
         if (depletion[parent] == 0) {
 
             optimize(current_values,
+                     // the state we are computing
                      current,
-                     // n_depletion: optimal point and range [min, max)
-                     depletion,
-                     0,
-                     2,
-                     // n_order: optimal point and range [min, max)
-                     order,
-                     0,
-                     n_capacity,
+                     // n_depletion, min_depletion, max_depletion
+                     depletion, 0, 2,
+                     // n_order, min_order, max_order
+                     order, 0, n_capacity,
                      // future utility for reference
-                     future_values);
+                     future_values,
+                     period);
 
         } else /* (depletion[parent] != 0) */ {
 
             optimize(current_values,
+                     // the state we are computing
                      current,
-                     // n_depletion: optimal point and range [min, max)
-                     depletion,
-                     depletion[parent]+1,
-                     depletion[parent]+2,
-                     // n_order: optimal point and range [min, max)
-                     order,
-                     0,
-                     n_capacity,
+                     // n_depletion, min_depletion, max_depletion
+                     depletion, depletion[parent]+1, depletion[parent]+2,
+                     // n_order, min_order, max_order
+                     order, 0, n_capacity,
                      // future utility for reference
-                     future_values);
+                     future_values,
+                     period);
 
         }
-
-        __threadfence_system();
     }
 }
 
 
-// The plain C function to interact with CUDA
+// Plain C function to interact with kernel
+// The structure is essentially the same as init_states.
+// If you feel confused, start from there!
 void
 iter_states(float *current_values,
             dp_int *depletion,
             dp_int *order,
-            float *future_values) {
+            float *future_values,
+            int period) {
 
     size_t num_states = std::pow(n_capacity, n_dimension);
 
@@ -131,6 +137,7 @@ iter_states(float *current_values,
                                                  depletion,
                                                  order,
                                                  future_values,
+                                                 period,
                                                  d, c, batch_size);
         }
     }

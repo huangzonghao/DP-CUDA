@@ -1,5 +1,6 @@
 #include <cmath>
 #include <iostream>
+#include <iomanip>
 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
@@ -61,19 +62,21 @@ main() {
 
     init_states(d_current_values);
 
-    std::cout << "state,depletion,order,value" << std::endl;
+    std::cout << "depletion,order,value" << std::endl;
 
-    for (int i = 0; i < n_period; i++) {
+    for (int period = 0; period < n_period; period++) {
 
         iter_states(d_current_values,
                     d_depletion,
                     d_order,
-                    d_future_values);
+                    d_future_values,
+                    period);
 
 
         for (size_t idx = 0; idx < num_states; idx++) {
-            std::cout << idx << ',' << static_cast<int>(h_depletion[idx]) << ',';
-            std::cout << static_cast<int>(h_order[idx]) << ',' << h_current_values[idx];
+            std::cout << static_cast<int>(h_depletion[idx]) << ',';
+            std::cout << static_cast<int>(h_order[idx]) << ',';
+            std::cout << std::fixed << std::setprecision(4) << h_current_values[idx];
             std::cout << '\n';
         }
         std::cout << std::endl;
