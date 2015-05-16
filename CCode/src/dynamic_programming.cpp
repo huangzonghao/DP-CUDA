@@ -73,7 +73,18 @@ main() {
                     period);
 
 
-        for (size_t idx = 0; idx < num_states; idx++) {
+        for (int idx = 0; idx < num_states; idx++) {
+            int exp = std::pow(n_capacity, n_dimension-1);
+            int i = idx;
+            for (int k = 0; k < n_dimension; k++) {
+                if (k > 0) {
+                    std::cout << ',';
+                }
+                std::cout << i / exp;
+                i %= exp;
+                exp /= n_capacity;
+            }
+            std::cout << '\t';
             std::cout << static_cast<int>(h_depletion[idx]) << ',';
             std::cout << static_cast<int>(h_order[idx]) << ',';
             std::cout << std::fixed << std::setprecision(4) << h_current_values[idx];
