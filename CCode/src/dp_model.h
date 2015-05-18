@@ -29,7 +29,7 @@ extern void iter_states(float *,
 
 const unsigned n_period = 2;
 
-const int n_dimension = 4;
+const int n_dimension = 2;
 const int n_capacity = 10;
 
 const float unit_salvage = 1.0;

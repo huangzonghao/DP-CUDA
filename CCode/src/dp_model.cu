@@ -1,18 +1,6 @@
 #include "dp_model.h"
 
 
-// Helper function to get CUDA thread id
-// whenever we use __device__ function
-__device__ inline size_t
-get_thread_id() {
-
-    size_t blockId = blockIdx.x +
-                     blockIdx.y * gridDim.x +
-                     gridDim.x * gridDim.y * blockIdx.z;
-    return blockId * blockDim.x + threadIdx.x;
-}
-
-
 // Handcraft array summation
 __device__ inline int
 sum(int *state, int length) {

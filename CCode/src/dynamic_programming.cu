@@ -10,6 +10,18 @@
 #include "dp_model.cu"
 
 
+// Helper function to get CUDA thread id
+// whenever we use __device__ function
+__device__ inline size_t
+get_thread_id() {
+
+    size_t blockId = blockIdx.x +
+                     blockIdx.y * gridDim.x +
+                     gridDim.x * gridDim.y * blockIdx.z;
+    return blockId * blockDim.x + threadIdx.x;
+}
+
+
 // Using these values for general CUDA GPU is just fine
 inline void
 get_grid_dim(dim3* block_dim, dim3* grid_dim, size_t batch_size) {
@@ -33,7 +45,7 @@ init_kernel(float *current_values,
 
     if (idx < batch_size) {
         size_t current = c * batch_size + idx;
-        size_t parent = current - batch_size;
+        size_t parent = (c > 0) ? (current - batch_size) : 0;
 
         current_values[current] = current_values[parent] + 1.0;
     }
@@ -45,6 +57,10 @@ void
 init_states(float *current_values) {
 
     size_t num_states = std::pow(n_capacity, n_dimension);
+
+    // The very first state
+    init_kernel<<<1, 1>>>(current_values,
+                          0, 0, 1);
 
     for (size_t d = 0; d < n_dimension; d++) {
         size_t batch_size = pow(n_capacity, d);
@@ -80,7 +96,7 @@ iter_kernel(float *current_values,
     if (idx < batch_size) {
 
         size_t current = c * batch_size + idx;
-        size_t parent = current - batch_size;
+        size_t parent = (c > 0) ? (current - batch_size) : 0;
 
         if (depletion[parent] == 0) {
 
@@ -124,6 +140,14 @@ iter_states(float *current_values,
             int period) {
 
     size_t num_states = std::pow(n_capacity, n_dimension);
+
+    // The very first state 0,0,...,0
+    iter_kernel<<<1, 1>>>(current_values,
+                          depletion,
+                          order,
+                          future_values,
+                          period,
+                          0, 0, 1);
 
     for (size_t d = 0; d < n_dimension; d++) {
 
