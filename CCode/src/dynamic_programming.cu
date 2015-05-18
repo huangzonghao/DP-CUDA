@@ -33,8 +33,7 @@ init_kernel(float *current_values,
 
     if (idx < batch_size) {
         size_t current = c * batch_size + idx;
-        // Use c = 0 for the very first state
-        size_t parent = (c > 0) ? current - batch_size : 0;
+        size_t parent = current - batch_size;
 
         current_values[current] = current_values[parent] + 1.0;
     }
@@ -53,8 +52,7 @@ init_states(float *current_values) {
         dim3 block_dim, grid_dim;
         get_grid_dim(&block_dim, &grid_dim, batch_size);
 
-        // Use c = 0 for the very first state
-        for (size_t c = 0; c < n_capacity; c++) {
+        for (size_t c = 1; c < n_capacity; c++) {
             init_kernel<<<grid_dim, block_dim>>>(current_values,
                                                  d, c, batch_size);
         }
@@ -82,8 +80,7 @@ iter_kernel(float *current_values,
     if (idx < batch_size) {
 
         size_t current = c * batch_size + idx;
-        // Use c = 0 for the very first state
-        size_t parent = (c > 0) ? current - batch_size : 0;
+        size_t parent = current - batch_size;
 
         if (depletion[parent] == 0) {
 
@@ -135,8 +132,7 @@ iter_states(float *current_values,
         dim3 block_dim, grid_dim;
         get_grid_dim(&block_dim, &grid_dim, batch_size);
 
-        // Use c = 0 for the very first state
-        for (size_t c = 0; c < n_capacity; c++) {
+        for (size_t c = 1; c < n_capacity; c++) {
             iter_kernel<<<grid_dim, block_dim>>>(current_values,
                                                  depletion,
                                                  order,
