@@ -3,11 +3,10 @@ cmake_minimum_required ( VERSION 2.8)
 find_package(CUDA)
 
 
-file( GLOB  hdr *.hpp *.h )
-file( GLOB  cu  *.cu)
-
-SET (demo_files main.cpp)
+file( GLOB_RECURSE  HDR  *.hpp *.h )
+file( GLOB_RECURSE  CU  *.cu)
+SET (CPP main.cpp)
     
-CUDA_ADD_EXECUTABLE(executable ${demo_files} ${hdr} ${cu})
+CUDA_ADD_EXECUTABLE(executable ${CPP} ${HDR} ${CU})
 
 

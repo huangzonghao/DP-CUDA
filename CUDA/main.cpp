@@ -1,8 +1,9 @@
-#include "main.h"
+#include "include/main.h"
 #include <cmath>
 using namespace std;
 
 size_t  valueTablesLength;
+int loadParams(string);
 
 void printResult(float* valueTable, size_t length, string title = "value table"){
     cout << endl << "Now starting to print out the " << title << ": "  << endl;
@@ -10,8 +11,6 @@ void printResult(float* valueTable, size_t length, string title = "value table")
     //         cout << valueTable[i] << ", ";
     // }
     // cout << valueTable[length - 1] << endl;
-
-
     for (size_t i = 0; i < length; ++i){
       cout << " the node : " << i << " has value : " << valueTable[i] << endl;
 
@@ -21,7 +20,15 @@ void printResult(float* valueTable, size_t length, string title = "value table")
 
 }
 
-int main(){
+int main(int argc, char ** argv){
+    /* load the global variables */
+    if ( argc < 2){
+        cerr << " Please input the config file name." << endl;
+        return -1;
+    }
+
+    loadParams(string(argv[1]));
+
 	/* declare variables */
     /* system features */
 
