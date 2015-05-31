@@ -98,21 +98,19 @@ iter_kernel(float *current_values,
         size_t current = c * batch_size + idx;
         int state[n_dimension+1] = {};
         decode(state, current);
+        int h_depletion = 0;
+        int h_order = 0;
         if (period < n_period-1) {
-           int h_depletion = 0;
-           int h_order = 0;
            if (n_drate - sum(state, n_dimension+1) > 1e-6){
               h_order = (int) n_drate - sum(state, n_dimension+1);
            }
         }
         else {
-           int h_depletion = 0;
            for (int i = 1; i < n_dimension + 1; i++) {
                if (sum(state, i)- i* n_drate > h_depletion + 1e-6){
-                  h_depletion = sum(state, i)- i* n_drate
+                  h_depletion = sum(state, i)- i* n_drate;
                }  
            }
-           int h_order = 0;
            if (n_drate - h_depletion - sum(state, n_dimension+1) > 1e-6){
               h_order = (int) n_drate - h_depletion - sum(state, n_dimension+1);
            }
@@ -124,7 +122,7 @@ iter_kernel(float *current_values,
                      // n_depletion, min_depletion, max_depletion
                   depletion, h_depletion, h_depletion +1,
                      // n_order, min_order, max_order
-                  order, h_order, n_order + 1,
+                  order, h_order, h_order + 1,
                      // future utility for reference
                   future_values,
                   period);
