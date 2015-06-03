@@ -40,11 +40,11 @@ init_kernel(float *current_values,
             size_t batch_idx,
             size_t batch_size) {
 
-    size_t idx = get_thread_id();
+    size_t thread_idx = get_thread_id();
 
-    if (idx < batch_size) {
+    if (thread_idx < batch_size) {
 
-        size_t current = batch_idx * batch_size + idx;
+        size_t current = batch_idx * batch_size + thread_idx;
         size_t parent = current - batch_size;
 
         if (current == 0) {
@@ -95,11 +95,11 @@ iter_kernel(float *current_values,
             size_t batch_idx,
             size_t batch_size) {
 
-    size_t idx = get_thread_id();
+    size_t thread_idx = get_thread_id();
 
-    if (idx < batch_size) {
+    if (thread_idx < batch_size) {
 
-        size_t current = batch_idx * batch_size + idx;
+        size_t current = batch_idx * batch_size + thread_idx;
         size_t parent = current - batch_size;
 
         // Custom filter
