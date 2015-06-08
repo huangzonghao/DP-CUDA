@@ -102,12 +102,6 @@ iter_kernel(float *current_values,
         size_t current = batch_idx * batch_size + thread_idx;
         size_t parent = current - batch_size;
 
-        // Custom filter
-        if (current % n_capacity != 0) {
-            current_values[current] = 0.0;
-            return;
-        }
-
         if (current == 0 || depletion[parent] == 0) {
 
             optimize(current_values,
