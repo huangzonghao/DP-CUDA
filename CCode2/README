@@ -1,0 +1,9 @@
+* ``make`` to compile the target.
+
+* ``./dynamic_programming`` to run the program.
+
+* To change some parameters, modify the ``src/dynamic_programming.h`` file directly.
+
+* Use ``nvidia-smi`` to monitor the usage of GPU.
+
+* Currently the output is printed to ``stdout`` directly. Use ``./dynamic_programming > dp.log`` to redirect the output to a log. Use ``nohup ./dynamic_programming > dp.log &`` to keep the job running after logging out.
