@@ -107,23 +107,22 @@ iter_kernel(float *current_values,
             current_values[current] = 0.0;
             return;
         }
-    int state[n_dimension+1] = {};
-    decode(state, current);
-    int currentsum = sum(state, n_dimension+1);
-    int n_depletion1 = 0;
-    int n_depletion2 = 0;
-    int n_order1 = 0;
-    int n_order2 = 0;
+        int state[n_dimension+1] = {};
+        decode(state, current);
+        int currentsum = sum(state, n_dimension+1);
+        int n_depletion1 = 0;
+        int n_depletion2 = 0;
+        int n_order1 = 0;
+        int n_order2 = 0;
 
-    float max_value1 = 0.0;
-    float max_value2 = 0.0;
+        float max_value1 = 0.0;
+        float max_value2 = 0.0;
 
-    struct Demand demand = demand_distribution_at_period[period];
+        struct Demand demand = demand_distribution_at_period[period];
 
-    for (int i = min_depletion; i < max_depletion; i++) {
+        for (int i = min_depletion; i < max_depletion; i++) {
             // Policy 1: order positive number q>0;
             int j1 = 0;
-            decode(state, current);
             if (currentsum- i < cvalue){
                 j1 = cvalue- currentsum + i;
             }
@@ -186,26 +185,25 @@ iter_kernel(float *current_values,
                 n_depletion2 = i;
                 n_order2 = j2;
             }
-
-        
-    }
+        }
 
     // Store the optimal point and value
-    if (max_value1 > max_value2 + 1e-6 && n_order1 > 0){
-      current_values[current] = max_value1;
-       depletion[current] = (dp_int) n_depletion1;
-       order[current] = (dp_int) n_order1;
-    }
-    else {
-       current_values[current] = max_value2;
-       depletion[current] = (dp_int) n_depletion2;
-       order[current] = (dp_int) n_order2;
+        if (max_value1 > max_value2 + 1e-6 && n_order1 > 0){
+           current_values[current] = max_value1;
+           depletion[current] = (dp_int) n_depletion1;
+           order[current] = (dp_int) n_order1;
+        }
+        else {
+           current_values[current] = max_value2;
+           depletion[current] = (dp_int) n_depletion2;
+           order[current] = (dp_int) n_order2;
+        }
     }
 }
 
 
 // Plain C function to interact with kernel
-// The structure is essentially the same as init_states.
+/ The structure is essentially the same as init_states.
 // If you feel confused, start from there!
 void
 iter_states(float *current_values,

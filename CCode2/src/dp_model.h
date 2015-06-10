@@ -31,6 +31,7 @@ const unsigned n_period = 3;
 
 const int n_dimension = 4;
 const int n_capacity = 10;
+const int cvalue = 9;
 
 const float unit_salvage = 1.0;
 const float unit_hold = -0.5;
