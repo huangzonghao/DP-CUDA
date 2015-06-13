@@ -60,7 +60,7 @@ main() {
                                              (void *)h_order, 0));
 
 
-    init_states(d_future_values);
+    init_states(d_current_values);
 
     std::cout << "depletion,order,value" << std::endl;
 
@@ -72,7 +72,7 @@ main() {
                     d_future_values,
                     period);
 
-        // Print the results
+
         for (int idx = 0; idx < num_states; idx++) {
             int exp = std::pow(n_capacity, n_dimension-1);
             int i = idx;
@@ -85,9 +85,9 @@ main() {
                 exp /= n_capacity;
             }
             std::cout << '\t';
-            std::cout << static_cast<int>(d_depletion[idx]) << ',';
-            std::cout << static_cast<int>(d_order[idx]) << ',';
-            std::cout << std::fixed << std::setprecision(4) << d_current_values[idx];
+            std::cout << static_cast<int>(h_depletion[idx]) << ',';
+            std::cout << static_cast<int>(h_order[idx]) << ',';
+            std::cout << std::fixed << std::setprecision(4) << h_current_values[idx];
             std::cout << '\n';
         }
         std::cout << std::endl;
@@ -95,6 +95,10 @@ main() {
         float *tmp = d_future_values;
         d_future_values = d_current_values;
         d_current_values = tmp;
+
+        tmp = h_future_values;
+        h_future_values = h_current_values;
+        h_current_values = tmp;
     }
 
 

@@ -37,21 +37,17 @@ get_grid_dim(dim3* block_dim, dim3* grid_dim, size_t batch_size) {
 // CUDA Kernel function for initialization
 __global__ void
 init_kernel(float *current_values,
-            size_t batch_idx,
+            size_t d,
+            size_t c,
             size_t batch_size) {
 
-    size_t thread_idx = get_thread_id();
+    size_t idx = get_thread_id();
 
-    if (thread_idx < batch_size) {
+    if (idx < batch_size) {
+        size_t current = c * batch_size + idx;
+        size_t parent = (c > 0) ? (current - batch_size) : 0;
 
-        size_t current = batch_idx * batch_size + thread_idx;
-        size_t parent = current - batch_size;
-
-        if (current == 0) {
-            current_values[current] = 0.0;
-        } else {
-            current_values[current] = current_values[parent] + 1.0;
-        }
+        current_values[current] = current_values[parent] + 1.0;
     }
 }
 
@@ -63,19 +59,18 @@ init_states(float *current_values) {
     size_t num_states = std::pow(n_capacity, n_dimension);
 
     // The very first state
-    init_kernel<<<1, 1>>>(current_values, 0, 1);
+    init_kernel<<<1, 1>>>(current_values,
+                          0, 0, 1);
 
     for (size_t d = 0; d < n_dimension; d++) {
-
         size_t batch_size = pow(n_capacity, d);
 
         dim3 block_dim, grid_dim;
         get_grid_dim(&block_dim, &grid_dim, batch_size);
 
-        for (size_t batch_idx = 1; batch_idx < n_capacity; batch_idx++) {
+        for (size_t c = 1; c < n_capacity; c++) {
             init_kernel<<<grid_dim, block_dim>>>(current_values,
-                                                 batch_idx,
-                                                 batch_size);
+                                                 d, c, batch_size);
         }
     }
 
@@ -92,44 +87,47 @@ iter_kernel(float *current_values,
             dp_int *order,
             float *future_values,
             int period,
-            size_t batch_idx,
+            size_t d,
+            size_t c,
             size_t batch_size) {
 
-    size_t thread_idx = get_thread_id();
+    size_t idx = get_thread_id();
 
-    if (thread_idx < batch_size) {
+    if (idx < batch_size) {
 
-        size_t current = batch_idx * batch_size + thread_idx;
-        size_t parent = current - batch_size;
-
-        if (current == 0 || depletion[parent] == 0) {
-
-            optimize(current_values,
-                     // the state we are computing
-                     current,
-                     // n_depletion, min_depletion, max_depletion
-                     depletion, 0, 2,
-                     // n_order, min_order, max_order
-                     order, 0, n_capacity,
-                     // future utility for reference
-                     future_values,
-                     period);
-
-        } else /* (depletion[parent] != 0) */ {
-
-            optimize(current_values,
-                     // the state we are computing
-                     current,
-                     // n_depletion, min_depletion, max_depletion
-                     depletion, depletion[parent]+1, depletion[parent]+2,
-                     // n_order, min_order, max_order
-                     order, 0, n_capacity,
-                     // future utility for reference
-                     future_values,
-                     period);
+        size_t current = c * batch_size + idx;
+        int state[n_dimension+1] = {};
+        decode(state, current);
+        int h_depletion = 0;
+        int h_order = 0;
+        if (period < n_period-1) {
+           if (n_drate - sum(state, n_dimension+1) > 1e-6){
+              h_order = (int) n_drate - sum(state, n_dimension+1);
+           }
+        }
+        else {
+           for (int i = 1; i < n_dimension + 1; i++) {
+               if (sum(state, i)- i* n_drate > h_depletion + 1e-6){
+                  h_depletion = sum(state, i)- i* n_drate;
+               }  
+           }
+           if (n_drate - h_depletion - sum(state, n_dimension+1) > 1e-6){
+              h_order = (int) n_drate - h_depletion - sum(state, n_dimension+1);
+           }
 
         }
-    }
+        optimize(current_values,
+                     // the state we are computing
+                  current,
+                     // n_depletion, min_depletion, max_depletion
+                  depletion, h_depletion, h_depletion +1,
+                     // n_order, min_order, max_order
+                  order, h_order, h_order + 1,
+                     // future utility for reference
+                  future_values,
+                  period);
+
+     }
 }
 
 
@@ -151,7 +149,7 @@ iter_states(float *current_values,
                           order,
                           future_values,
                           period,
-                          0, 1);
+                          0, 0, 1);
 
     for (size_t d = 0; d < n_dimension; d++) {
 
@@ -160,14 +158,13 @@ iter_states(float *current_values,
         dim3 block_dim, grid_dim;
         get_grid_dim(&block_dim, &grid_dim, batch_size);
 
-        for (size_t batch_idx = 1; batch_idx < n_capacity; batch_idx++) {
+        for (size_t c = 1; c < n_capacity; c++) {
             iter_kernel<<<grid_dim, block_dim>>>(current_values,
                                                  depletion,
                                                  order,
                                                  future_values,
                                                  period,
-                                                 batch_idx,
-                                                 batch_size);
+                                                 d, c, batch_size);
         }
     }
 

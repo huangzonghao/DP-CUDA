@@ -1,0 +1,34 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+
+\makeatletter
+\def\BState{\State\hskip-\ALG@thistlm}
+\makeatother
+
+\begin{document}
+\begin{algorithm}
+\caption{Diffusion Policy}\label{diffu}
+\begin{algorithmic}[1]
+\Procedure{Period iteration}{}
+\State $\textit{period} \gets 0$
+\State $\textit{futurevalues}[state] \gets sum(state)$
+\State $\textit{currentvalues}[state] \gets 0$
+\BState \emph{top}:
+\State for all \emph{state}: 
+\State for all \emph{depletion}: 
+\State \textit{order1}=0, value1= revenue + futurevalue[futurestate];
+\If {$order2= cvalue-sum(state) + depletion > 0$}
+\State $value2= revenue + futurevalue[0]+ marginal\cdot sum(futurestate)$;
+\State $currentvalue[state]= max(value1,value2);$
+\EndIf 
+\State $currentvalue[state]= max(currentvalue[state],value1);$
+\BState \emph{loop}:
+\State  $\textit{period} \gets \textit{period}+1$;
+\State  $\textit{futurevalues}[state] \gets \textit{currentvalues}[state]$
+\State \textbf{goto} \emph{top}.
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+\end{document} 
