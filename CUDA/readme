@@ -1,0 +1,6 @@
+### run the following commands on a cuda enabled machine ###
+mkdir build
+cd build
+cmake ..
+make
+./executable ../param.json

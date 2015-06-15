@@ -114,14 +114,32 @@ where
         \paragraph{} So in total $m$ iterations are needed and within each iteration $k ^{i - 1}$ threads operate in parallel where $i$ is the index of the iteration.  
 \subsection*{Algorithm Implementation}
 \paragraph{} There are three tables kept in the GPU memory all the time, the $V_{t + 1}$, the $V_{t}$, and a table holding the all the depletion amount for each state of $V_{t + 1}$. And what we are going to do here is to update the table of $V_{t}$ based on $V_{t + 1}$ and the depletion information.
-\paragraph{} As has been discussed above, the $V_{t}$ table will be updated in $m$ iterations and within each iteration, $k_{i - 1}$ threads will be in useo
+\paragraph{} As has been discussed above, the value table will be updated in $m$ iterations ( by updating $V_{t}$ and $V_{t+1}$ alternatively ) and within each iteration, $k^{i - 1}$ threads will be used to update a total of $k^{i}$ entries in the $V_{t+1}$ table. And for each thread, it takes care of $k$ nodes in the $V_{t+1}$ table which are considered as the ``descents'' of the corresponding entry in the $V_{t}$ table as has been discussed above.
+\paragraph{} So what we are going to do here is to implement an algorithm which contains two for loops, the outer one is deployed on the CPU and it takes care of the $m$ iterations and the inner loop is deployed on the specific GPU threads and each takes care of a node family.
 
-\begin{figure}[c]
-        \centering
-        \includegraphics{<+file+>}
-        \caption{<+caption text+>}
-        \label{fig:<+label+>}
-\end{figure}<++>
+\subsection*{Program Description}
+\begin{enumerate}
+		\item [] \textbf{Functions}: \ 
+				\begin{itemize}
+						\item \textit{checkCudaErrors}: This function is to detect any errors while invoking CUDA functions. And this function should be called whenever a CUDA function is called.
+						\item \textit{cudaHostAlloc}: This function is to allocated some memory on host ( the CPU memory and map this memory to the CUDA memory). So if some memory is allocated in this way, those memory is visible to the CUDA SMs.
+						\item \textit{cudaSetDeviceFlags(cudaDeviceMapHost)}: To enable the function mentioned above.
+						\item \textit{cudaThreadSynchronize}: This function is for synchronize the threads within a kernel call. And the function should be called whenever the kernel tries to do some sequential modification on the global memory.
+						\item \textit{cudaDeviceSynchronize}: This function is to synchronize the entire block and is rarely used.
+						\item \textit{threadIdx $\&$ blockIdx}: In a CUDA device, the computation units are divided into different blocks, each block is divided into 1024 threads. All the threads can operate simultaneously. Though there is this ``wrap'' thing, we don't need to care too much about it on this problem. And the \textit{blockIdx} is a system parameter which stores the index of the current block in the global scope. And note since the blocks are managed in 3D, the \textit{blockIdx} is a structure contains three attributes, \textit{x}, \textit{y}, and \textit{z}. Similar to the \textit{blockIdx}, the \textit{threadIdx} stores the thread index of the current thread within the block, and it's also a structure with three attributes.
+						\item \textit{global and device}: the global keyword denotes the kernel function which is visible to the host function, and the device keyword denotes the kernel function which is only visible to another kernel function. And the keyword incline should be used while writing small device function for the best efficiency. 
+
+						%\item \textit{init_states(float * currentValues)}: k
+				\end{itemize}
+\end{enumerate}
+%\subsection*{Correctness Analysis}
+
+%\subsection*{Time Complexity}
+%\subsection*{Conclusion}
+%\paragraph{} The algorithm successfully solved the dynamic programming problem with GPU. And during the algorithm implementation, an efficient data structure is designed to help to accelerate the data processing speed. And finally the algorithm finishes its task perfectly.
+\subsection*{Some Left Overs}
+\paragraph{} Currently the bottleneck of this algorithm is the data transmitting speed between the host and the device. And the problem size is limited by the GPU memory. We are still looking for solutions to break the limit and implement the SLI configuration.
+
 
 % --------------------------------------------------------------
 % 			End of the file
