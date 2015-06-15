@@ -120,15 +120,15 @@ iter_kernel(float *current_values,
 
         struct Demand demand = demand_distribution_at_period[period];
 
-        for (int i = min_depletion; i < max_depletion; i++) {
+        for (int i = 0; i < currentsum+1; i++) {
             // Policy 1: order positive number q>0;
-            int j1 = 0;
+           
             if (currentsum- i < cvalue){
-                j1 = cvalue- currentsum + i;
-            }
-            float expected_value1 = 0.0;
+               int j1 = cvalue- currentsum + i;
+            
+               float expected_value1 = 0.0;
 
-            for (int k = demand.min_demand; k < demand.max_demand; k++) {
+               for (int k = demand.min_demand; k < demand.max_demand; k++) {
 
                 // Always initialize state array before calling of revenue()
                 // As the value is corrupted and can't be used again
@@ -143,19 +143,23 @@ iter_kernel(float *current_values,
                 int future = encode(state);
                 
                 // Here the approximation is based on the theory
+                if (period> 0){
                 value += discount * (future_values[0]
                          + (-discount * unit_order+ unit_hold)* futuresum);
-
+                }
+                else{
+                value += discount * future_values[future];
+                }
                 expected_value1 += demand.distribution[k - demand.min_demand] * value;
-            }
+               }
 
             // Simply taking the moving maximum
-            if (expected_value1 > max_value1 + 1e-6) {
-                max_value1 = expected_value1;
-                n_depletion1 = i;
-                n_order1 = j1;
+               if (expected_value1 > max_value1 + 1e-6) {
+                  max_value1 = expected_value1;
+                  n_depletion1 = i;
+                  n_order1 = j1;
+               }
             }
-           
             // Policy 2: order q=0;
             int j2= 0;
             float expected_value2 = 0.0;
@@ -203,7 +207,7 @@ iter_kernel(float *current_values,
 
 
 // Plain C function to interact with kernel
-/ The structure is essentially the same as init_states.
+// The structure is essentially the same as init_states.
 // If you feel confused, start from there!
 void
 iter_states(float *current_values,
