@@ -3,4 +3,4 @@ mkdir build
 cd build
 cmake ..
 make
-./executable ../param.json
+./executable ../param.json > output.txt
