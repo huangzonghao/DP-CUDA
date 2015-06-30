@@ -4,6 +4,8 @@
 #include "parameters.h"
 #include "utils.h"
 #include "support.h"
+#include "model.h"
+#include "loadParams.h"
 
 
 #endif

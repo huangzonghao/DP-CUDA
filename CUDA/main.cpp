@@ -1,9 +1,9 @@
-#include "include/main.h"
+#include "main.h"
 #include <cmath>
 using namespace std;
 
 size_t  valueTablesLength;
-int loadParams(string);
+
 
 void printResult(float* valueTable, size_t length, string title = "value table"){
     cout << endl << "Now starting to print out the " << title << ": "  << endl;
@@ -38,9 +38,9 @@ int main(int argc, char ** argv){
     cudainfo.numThreadsPerBlock = 0;
     gatherSystemInfo(&cudainfo);
 
-    cout << "System Configuration : " << endl 
-         << "   Number of CUDA Devices : " << cudainfo.deviceCount << endl 
-         << "   Number of cores : " << cudainfo.numBlocks << endl 
+    cout << "System Configuration : " << endl
+         << "   Number of CUDA Devices : " << cudainfo.deviceCount << endl
+         << "   Number of cores : " << cudainfo.numBlocks << endl
          << "   Number of threads per core : " << cudainfo.numThreadsPerBlock << endl;
 
 	// host tables
@@ -52,8 +52,8 @@ int main(int argc, char ** argv){
     d_valueTables = (float **)malloc(2 * sizeof(float *));
     float * d_randomTable;
 
-    
-    valueTablesLength = pow(k, m);
+
+    valueTablesLength = pow(h_k, h_m);
     cout <<"valueTablesLength: " <<  valueTablesLength << endl;
 
 
@@ -62,17 +62,17 @@ int main(int argc, char ** argv){
 	h_valueTable = (float*)malloc( valueTablesLength * sizeof(float) );
 
     deviceTableInit(2, 					// total number of tables
-    				d_valueTables, 		
+    				d_valueTables,
     				valueTablesLength,
                     &cudainfo);
 
 
     deviceTableInit(1,
                     &d_randomTable,
-                    (max_demand - min_demand),
+                    (h_max_demand - h_min_demand),
                     &cudainfo);
 
-    passToDevice(demand_distribution, d_randomTable, (max_demand - min_demand));
+    passToDevice(h_demand_distribution, d_randomTable, (h_max_demand - h_min_demand));
 
 
     /* evalueate the value of the table with the given parameters and the given policy f */
@@ -88,7 +88,7 @@ int main(int argc, char ** argv){
 
 
     // /* T periods in total */
-    for ( size_t iPeriod = T; iPeriod > 0; --iPeriod){
+    for ( size_t iPeriod = h_T; iPeriod > 0; --iPeriod){
       if(iPeriod != 1){
         valueTableUpdateWithPolicy( d_valueTables, currentTableIdx, 0, d_randomTable, &cudainfo);
         currentTableIdx = 1 - currentTableIdx;
@@ -96,8 +96,8 @@ int main(int argc, char ** argv){
       else{
         // first calculate the expect demand for each day
         float expectDemand = 0;
-        for (int i = min_demand; i < max_demand - min_demand + 1; ++i){
-            expectDemand += i * demand_distribution[i];
+        for (int i = h_min_demand; i < h_max_demand - h_min_demand + 1; ++i){
+            expectDemand += i * h_demand_distribution[i];
         }
                 // cerr << " the expected demand : " << endl << (size_t)ceil(expectDemand) << endl;
         valueTableUpdateWithPolicy( d_valueTables, currentTableIdx, (size_t)ceil(expectDemand), d_randomTable, &cudainfo);

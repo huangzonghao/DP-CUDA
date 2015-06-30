@@ -1,16 +1,6 @@
 #ifndef _SUPPORT_H
 #define _SUPPORT_H
 
-#include <cstdlib>
-#include <ctime>
-
-#include "timer.h"
-#include "parameters.h"
-
-
-//#include "utils.h"
-
-
 struct cudaInfoStruct{
   size_t deviceCount;
   size_t numBlocks;
@@ -29,6 +19,11 @@ void gatherSystemInfo(cudaInfoStruct *);
 
 void deviceTableInit(size_t numTables, float ** tables, unsigned long tableLengths, cudaInfoStruct * cudainfo);
 void test();
+
+
+/* the device functions */
+// __device__ void decode (size_t* mDIdx, size_t oneDIdx);
+// __device__ size_t checkStorage(size_t* mDarray);
 
 
 #endif
