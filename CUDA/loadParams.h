@@ -1,7 +1,9 @@
 #ifndef _LOADPRARMS_H
 #define _LOADPRARMS_H
 
-int loadParams(std::string filename);
+using namespace std;
+int loadParams(const char *);
+void checkParams();
 
 
 #endif

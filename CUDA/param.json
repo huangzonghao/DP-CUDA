@@ -1,25 +1,25 @@
 {
-    /* total number of categories */
+
     "m": 4,
-    /* maximum number for each category */
+
     "k": 10,
-    /* number of periods */
+
     "T": 5,
-    /* storing cost for each item */
+
     "h": 0.5,
-    /* the price of each item */
+
     "r": 5,
-    /* the ordering cost of each item */
+
     "c": 3,
-    /* the disposal cost of each item */
+
     "theta": 2,
-    /* the salvage benefit for one item */
+
     "s": 0.2,
-    /* the discount rate */
+
     "alpha": 0.95,
-    /* maximum storage */
+
     "maxhold": 3,
-    /* the arrival rate for poisson distribution */
+
     "lambda": 8,
 
     "min_demand": 0,

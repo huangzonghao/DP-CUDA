@@ -1,5 +1,12 @@
-#include "main.h"
 #include <cmath>
+#include <fstream>
+#include <iostream>
+#include "timer.h"
+#include "parameters.h"
+#include "utils.h"
+#include "support.h"
+#include "model.h"
+#include "loadParams.h"
 using namespace std;
 
 size_t  valueTablesLength;
@@ -20,14 +27,54 @@ void printResult(float* valueTable, size_t length, string title = "value table")
 
 }
 
+inline bool is_file_exist (const std::string& name) {
+    ifstream f(name.c_str());
+    if (f.good()) {
+        f.close();
+        return true;
+    } else {
+        f.close();
+        return false;
+    }
+}
+
+const char * execCMD(string cmd){
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe) return "ERROR";
+    char buffer[128];
+    std::string result = "";
+    while(!feof(pipe)) {
+        if(fgets(buffer, 128, pipe) != NULL)
+            result += buffer;
+    }
+    pclose(pipe);
+    result.resize(result.size() - 1);
+    return result.c_str();
+}
+
+
 int main(int argc, char ** argv){
     /* load the global variables */
+    string filename = "../param.json";
     if ( argc < 2){
-        cerr << " Please input the config file name." << endl;
+        cerr << "Warning: no input." << endl << "Looking for the default config file : " << filename << endl;
+        if ( !is_file_exist(filename)){
+            cerr << "Cannot find " << execCMD("pwd") << "/" << filename << ", abort.";
+            return -1;
+        }
+
+    }
+    else if ( !is_file_exist(string(argv[1])) ){
+        cerr << "Error: cannot find file." << endl << "Cannot find " <<  execCMD("pwd") << "/" <<  argv[1] << ", please check the filename and the path, abort." << endl;
         return -1;
     }
+    else {
+        filename = argv[1];
+    }
 
-    loadParams(string(argv[1]));
+    cerr << "Config file found." << endl;
+    loadParams(filename.c_str());
+    checkParams();
 
 	/* declare variables */
     /* system features */

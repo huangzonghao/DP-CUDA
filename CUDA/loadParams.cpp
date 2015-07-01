@@ -21,18 +21,16 @@ using namespace std;
 using namespace rapidjson;
 
 
-int loadParams(string filename){
+int loadParams(const char * filename){
 
-	const char * fname = filename.c_str();
-	char  faction = 'r';
-	const char * hehe = &faction;
 
-	FILE* fp = fopen(fname, hehe);
+	FILE* fp = fopen(filename, "r");
 
 	char readBuffer[65536];
 	FileReadStream is(fp, readBuffer, sizeof(readBuffer));
 	Document para;
 	para.ParseStream(is);
+
 
     /* need to pass all the parameters to the device as well */
 
@@ -100,4 +98,26 @@ int loadParams(string filename){
 	fclose(fp);
 
 	return 0;
+}
+
+
+void checkParams(){
+	cerr << endl << "===========================" << endl
+		 <<"The parameters read are : " << endl
+		 << "h_m : " << h_m << endl
+		 << "h_k : " << h_k << endl
+		 << "h_T : " << h_T << endl
+		 << "h_h : " << h_h << endl
+		 << "h_r : " << h_r << endl
+		 << "h_c : " << h_c << endl
+		 << "h_theta : " << h_theta << endl
+		 << "h_s : " << h_s << endl
+		 << "h_alpha : " << h_alpha << endl
+		 << "h_maxhold : " << h_maxhold << endl
+		 << "h_lambda : " << h_lambda << endl
+		 << "h_min_demand : " << h_min_demand << endl
+		 << "h_max_demand : " << h_max_demand << endl
+		 << "===========================" << endl << endl;
+
+
 }
