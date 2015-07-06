@@ -125,6 +125,39 @@ revenue(int *state,
     return revenue;
 }
 
+__device__ inline float
+stateValue(size_t current,
+           int depletion,
+           int order,
+           float *future_values,
+           struct Demand demand,
+           int period){
+    int state[n_dimension+1] = {};
+    decode(state, current);
+
+    float expected_value = 0.0;
+    int i= depletion;
+    int j= order;
+
+    for (int k = demand.min_demand; k < demand.max_demand; k++) {
+
+                // Always initialize state array before calling of revenue()
+                // As the value is corrupted and can't be used again
+        decode(state, current);
+
+                // By calling revenue(), the state array
+                // now stores the state for f
+        float value = revenue(state, current, i, j, k);
+
+                // And find the corresponding utility of future
+        int future = encode(state);
+
+        value += discount * future_values[future];
+
+        expected_value += demand.distribution[k - demand.min_demand] * value;
+    }
+    return expected_value;
+}
 
 __device__ void
 optimize(float *current_values,

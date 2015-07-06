@@ -149,7 +149,8 @@ optimize(float *current_values,
     int n_order = 0;
     float max_value = 0.0;
 
-    struct Demand demand = demand_distribution_at_period[period];
+   // struct Demand demand = demand_distribution_at_period[period];
+ struct Demand demand = demand_distribution_at_period[0];
 
     for (int i = min_depletion; i < max_depletion; i++) {
         for (int j = min_order; j < max_order; j++) {

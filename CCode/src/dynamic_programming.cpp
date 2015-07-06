@@ -1,6 +1,7 @@
 #include <cmath>
 #include <iostream>
 #include <iomanip>
+#include <stdio.h>
 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
@@ -49,7 +50,8 @@ main() {
 
     cudaSetDeviceFlags(cudaDeviceMapHost);
 
-
+    
+   
     checkCudaErrors(cudaHostGetDevicePointer((void **)&d_current_values,
                                              (void *)h_current_values, 0));
     checkCudaErrors(cudaHostGetDevicePointer((void **)&d_future_values,
@@ -59,13 +61,17 @@ main() {
     checkCudaErrors(cudaHostGetDevicePointer((void **)&d_order,
                                              (void *)h_order, 0));
 
-
+ /*   FILE *fp;
+    fp = fopen("/ghome/hzhangaq/DP-parellel-computing/CCode/dp0701.log","r");
+    for (int i=0; i <  num_states; i++){
+        fscanf(fp,"%f", &h_future_values[i]);
+    } */
     init_states(d_future_values);
 
-    std::cout << "depletion,order,value" << std::endl;
+  //  std::cout << "depletion,order,value" << std::endl;
 
     for (int period = 0; period < n_period; period++) {
-
+       
         iter_states(d_current_values,
                     d_depletion,
                     d_order,
@@ -73,8 +79,20 @@ main() {
                     period);
 
         // Print the results
-        for (int idx = 0; idx < num_states; idx++) {
-            int exp = std::pow(n_capacity, n_dimension-1);
+                float *tmp = d_future_values;
+        d_future_values = d_current_values;
+        d_current_values = tmp;
+    }
+   //int state[n_dimension+1] = {};
+   for (int idx = 0; idx < num_states; idx++) {
+      int idxsum= 0;
+      int idx_1 = idx;
+      for (int i= n_dimension-1; i>= 0; i--){
+          idxsum += idx_1 % n_capacity;
+          idx_1 /= n_capacity;
+      }
+      if (idxsum <= cvalue){
+          /*  int exp = std::pow(n_capacity, n_dimension-1);
             int i = idx;
             for (int k = 0; k < n_dimension; k++) {
                 if (k > 0) {
@@ -84,18 +102,15 @@ main() {
                 i %= exp;
                 exp /= n_capacity;
             }
-            std::cout << '\t';
+            std::cout << '\t'; 
             std::cout << static_cast<int>(d_depletion[idx]) << ',';
-            std::cout << static_cast<int>(d_order[idx]) << ',';
-            std::cout << std::fixed << std::setprecision(4) << d_current_values[idx];
+            std::cout << static_cast<int>(d_order[idx]) << ','; */  
+            std::cout << std::fixed << std::setprecision(4) << d_future_values[idx];
             std::cout << '\n';
-        }
+      }
+    }
         std::cout << std::endl;
 
-        float *tmp = d_future_values;
-        d_future_values = d_current_values;
-        d_current_values = tmp;
-    }
 
 
     checkCudaErrors(cudaFreeHost((void *)h_current_values));
