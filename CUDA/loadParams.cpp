@@ -103,21 +103,21 @@ int loadParams(const char * filename){
 
 void checkParams(){
 	cerr << endl << "===========================" << endl
-		 <<"The parameters read are : " << endl
-		 << "h_m : " << h_m << endl
-		 << "h_k : " << h_k << endl
-		 << "h_T : " << h_T << endl
-		 << "h_h : " << h_h << endl
-		 << "h_r : " << h_r << endl
-		 << "h_c : " << h_c << endl
-		 << "h_theta : " << h_theta << endl
-		 << "h_s : " << h_s << endl
-		 << "h_alpha : " << h_alpha << endl
-		 << "h_maxhold : " << h_maxhold << endl
-		 << "h_lambda : " << h_lambda << endl
-		 << "h_min_demand : " << h_min_demand << endl
-		 << "h_max_demand : " << h_max_demand << endl
-		 << "===========================" << endl << endl;
+		 <<"The parameters read are : \e[38;5;166m" << endl
+		 << "\e[1;33mh_m : \e[38;5;166m" << h_m << endl
+		 << "\e[1;33mh_k : \e[38;5;166m" << h_k << endl
+		 << "\e[1;33mh_T : \e[38;5;166m" << h_T << endl
+		 << "\e[1;33mh_h : \e[38;5;166m" << h_h << endl
+		 << "\e[1;33mh_r : \e[38;5;166m" << h_r << endl
+		 << "\e[1;33mh_c : \e[38;5;166m" << h_c << endl
+		 << "\e[1;33mh_theta : \e[38;5;166m" << h_theta << endl
+		 << "\e[1;33mh_s : \e[38;5;166m" << h_s << endl
+		 << "\e[1;33mh_alpha : \e[38;5;166m" << h_alpha << endl
+		 << "\e[1;33mh_maxhold : \e[38;5;166m" << h_maxhold << endl
+		 << "\e[1;33mh_lambda : \e[38;5;166m" << h_lambda << endl
+		 << "\e[1;33mh_min_demand : \e[38;5;166m" << h_min_demand << endl
+		 << "\e[1;33mh_max_demand : \e[38;5;166m" << h_max_demand << endl
+		 << "\e[m===========================" << endl << endl;
 
 
 }

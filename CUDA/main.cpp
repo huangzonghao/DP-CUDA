@@ -57,15 +57,15 @@ int main(int argc, char ** argv){
     /* load the global variables */
     string filename = "../param.json";
     if ( argc < 2){
-        cerr << "Warning: no input." << endl << "Looking for the default config file : " << filename << endl;
+        cerr << "\e[38;5;57mWarning: no input." << "\e[m" << endl << "Looking for the default config file : " << filename << endl;
         if ( !is_file_exist(filename)){
-            cerr << "Cannot find " << execCMD("pwd") << "/" << filename << ", abort.";
+            cerr << "\e[38;5;196mCannot find " << execCMD("pwd") << "/" << filename << ", abort.\e[m";
             return -1;
         }
 
     }
     else if ( !is_file_exist(string(argv[1])) ){
-        cerr << "Error: cannot find file." << endl << "Cannot find " <<  execCMD("pwd") << "/" <<  argv[1] << ", please check the filename and the path, abort." << endl;
+        cerr << "\e[38;5;196mError: cannot find file.\e[m" << endl << "Cannot find " <<  execCMD("pwd") << "/" <<  argv[1] << ", please check the filename and the path, abort." << endl;
         return -1;
     }
     else {
@@ -86,9 +86,9 @@ int main(int argc, char ** argv){
     gatherSystemInfo(&cudainfo);
 
     cout << "System Configuration : " << endl
-         << "   Number of CUDA Devices : " << cudainfo.deviceCount << endl
-         << "   Number of cores : " << cudainfo.numBlocks << endl
-         << "   Number of threads per core : " << cudainfo.numThreadsPerBlock << endl;
+         << "   Number of CUDA Devices : " << "\e[38;5;166m" << cudainfo.deviceCount << "\e[m" << endl
+         << "   Number of cores : " << "\e[38;5;166m" << cudainfo.numBlocks << "\e[m" << endl
+         << "   Number of threads per core : " << "\e[38;5;166m" <<  cudainfo.numThreadsPerBlock << "\e[m" << endl;
 
 	// host tables
 	float * h_valueTable;
