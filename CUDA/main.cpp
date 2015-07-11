@@ -99,7 +99,7 @@ int main(int argc, char ** argv){
     d_valueTables = (float **)malloc(2 * sizeof(float *));
     float * d_randomTable;
 
-
+	
     valueTablesLength = pow(h_k, h_m);
     cout <<"valueTablesLength: " <<  valueTablesLength << endl;
 
@@ -108,23 +108,18 @@ int main(int argc, char ** argv){
 	/* memory allocation */
 	h_valueTable = (float*)malloc( valueTablesLength * sizeof(float) );
 
-    cerr << "1" << endl;
-
 
     deviceTableInit(2, 					// total number of tables
     				d_valueTables,
     				valueTablesLength,
                     &cudainfo);
-    cerr << "2" << endl;
 
     deviceTableInit(1,
                     &d_randomTable,
                     (h_max_demand - h_min_demand),
                     &cudainfo);
-    cerr << "3" << endl;
 
     passToDevice(h_demand_distribution, d_randomTable, (h_max_demand - h_min_demand));
-    cerr << "4" << endl;
 
 
     /* evalueate the value of the table with the given parameters and the given policy f */
@@ -134,10 +129,7 @@ int main(int argc, char ** argv){
     // /*first init make one of the d_valueTables to the edge values*/
     presetValueTable(d_valueTables[currentTableIdx], valueTablesLength, &cudainfo);
     currentTableIdx = 1 - currentTableIdx;
-    cerr << "5" << endl;
-
-    readFromDevice(h_valueTable, d_valueTables[1 - currentTableIdx], valueTablesLength);
-    cerr << "6" << endl;
+	readFromDevice(h_valueTable, d_valueTables[1 - currentTableIdx], valueTablesLength);
 
 
 

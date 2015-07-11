@@ -3,6 +3,7 @@
 #include "rapidjson/filereadstream.h"
 #include "rapidjson/filewritestream.h"
 #include "parameters.h"
+#include "paramsDefination.h"
 #include "loadParams.h"
 
 

@@ -196,7 +196,7 @@ void valueTableUpdateWithPolicy( float** d_valueTables,
 
   size_t * d_mdidx;
   // assign to each thread some global memory to store the m D information
-  checkCudaErrors(cudaMalloc(&d_mdidx, cudainfo->numBlocks * cudainfo->numThreadsPerBlock * *d_m * sizeof(size_t)));
+  checkCudaErrors(cudaMalloc(&d_mdidx, cudainfo->numBlocks * cudainfo->numThreadsPerBlock * h_m * sizeof(size_t)));
 
 
   size_t batchAmount = valueTablesLength / cudainfo->numBlocks / cudainfo->numThreadsPerBlock + 1;
@@ -261,7 +261,7 @@ void presetValueTable(float * d_valueTable, size_t  table_length, cudaInfoStruct
   dim3 blockSize(cudainfo->numThreadsPerBlock, 1, 1);
   size_t * d_mdidx;
   // assign to each thread some global memory to store the m D information
-  checkCudaErrors(cudaMalloc(&d_mdidx, cudainfo->numBlocks * cudainfo->numThreadsPerBlock * *d_m * sizeof(size_t)));
+  checkCudaErrors(cudaMalloc(&d_mdidx, cudainfo->numBlocks * cudainfo->numThreadsPerBlock * h_m * sizeof(size_t)));
   kernel_presetValueTable<<<gridSize, blockSize>>>
     ( d_valueTable,
       d_mdidx,
