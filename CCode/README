@@ -7,3 +7,6 @@
 * Use ``nvidia-smi`` to monitor the usage of GPU.
 
 * Currently the output is printed to ``stdout`` directly. Use ``./dynamic_programming > dp.log`` to redirect the output to a log. Use ``nohup ./dynamic_programming > dp.log &`` to keep the job running after logging out.
+
+
+

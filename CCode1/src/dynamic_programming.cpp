@@ -60,9 +60,9 @@ main() {
                                              (void *)h_order, 0));
 
 
-    init_states(d_current_values);
+    init_states(d_future_values);
 
-    std::cout << "depletion,order,value" << std::endl;
+//    std::cout << "depletion,order,value" << std::endl;
 
     for (int period = 0; period < n_period; period++) {
 
@@ -73,7 +73,7 @@ main() {
                     period);
 
 
-        for (int idx = 0; idx < num_states; idx++) {
+  /*      for (int idx = 0; idx < num_states; idx++) {
             int exp = std::pow(n_capacity, n_dimension-1);
             int i = idx;
             for (int k = 0; k < n_dimension; k++) {
@@ -90,7 +90,7 @@ main() {
             std::cout << std::fixed << std::setprecision(4) << h_current_values[idx];
             std::cout << '\n';
         }
-        std::cout << std::endl;
+        std::cout << std::endl;  */
 
         float *tmp = d_future_values;
         d_future_values = d_current_values;
@@ -100,6 +100,33 @@ main() {
         h_future_values = h_current_values;
         h_current_values = tmp;
     }
+    for (int idx = 0; idx < num_states; idx++) {
+        int idxsum= 0;
+        int idx_1 = idx;
+        for (int i= n_dimension-1; i>= 0; i--){
+            idxsum += idx_1 % n_capacity;
+            idx_1 /= n_capacity;
+        }
+        if (idxsum <= initial_small){
+          /*  int exp = std::pow(n_capacity, n_dimension-1);
+            int i = idx;
+            for (int k = 0; k < n_dimension; k++) {
+                if (k > 0) {
+                    std::cout << ',';
+                }
+                std::cout << i / exp;
+                i %= exp;
+                exp /= n_capacity;
+            }
+            std::cout << '\t';
+            std::cout << static_cast<int>(d_depletion[idx]) << ',';
+            std::cout << static_cast<int>(d_order[idx]) << ','; */
+            std::cout << std::fixed << std::setprecision(4) << d_future_values[idx];
+            std::cout << '\n';
+      }
+    }
+        std::cout << std::endl;
+
 
 
     checkCudaErrors(cudaFreeHost((void *)h_current_values));

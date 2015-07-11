@@ -88,9 +88,11 @@ init_states(float *current_values) {
 // The CUDA kernel function for DP
 __global__ void
 iter_kernel(float *current_values,
+            float *aux_current_values,
             dp_int *depletion,
             dp_int *order,
             float *future_values,
+            float *aux_future_values,
             int period,
             size_t batch_idx,
             size_t batch_size) {
@@ -98,9 +100,10 @@ iter_kernel(float *current_values,
     size_t thread_idx = get_thread_id();
 
     if (thread_idx < batch_size) {
+       // first update current_values
 
         size_t current = batch_idx * batch_size + thread_idx;
-        size_t parent = current - batch_size;
+       // size_t parent = current - batch_size;
 
         int state[n_dimension+1] = {};
         decode(state, current);
@@ -113,66 +116,26 @@ iter_kernel(float *current_values,
         float max_value1 = 0.0;
         float max_value2 = 0.0;
 
-        struct Demand demand = demand_distribution_at_period[period];
-        if (current == 0 || depletion[parent] == 0) {
-           for (int i = 0; i < 2; i++) {
+        struct Demand demand = demand_distribution_at_period[0];
+        
+        for (int i = 0; i <= currentsum; i++){        
             // Policy 1: order positive number q>0;
            
-              if (currentsum- i < cvalue){
-                 int j1 = cvalue- currentsum + i;
-            
-                 float expected_value1 = 0.0;
-
-                 for (int k = demand.min_demand; k < demand.max_demand; k++) {
-
-                // Always initialize state array before calling of revenue()
-                // As the value is corrupted and can't be used again
-                    decode(state, current);
-
-                // By calling revenue(), the state array
-                // now stores the state for future
-                    float value = revenue(state, current, i, j1, k);
-
-                // And find the corresponding utility of future
-                    int futuresum = sum(state, n_dimension+1);
-                    int future = encode(state);
-                
-                // Here the approximation is based on the theory
-                    value += discount * future_values[future];
-                    expected_value1 += demand.distribution[k - demand.min_demand] * value;
-                 }
-
-            // Simply taking the moving maximum
+              if (currentsum- i < n_capacity){
+                 int j1 = n_capacity- currentsum + i;
+                 float expected_value1 = stateValue(current,i,j1,aux_future_values,demand, period) ;
+                 
+                       // Simply taking the moving maximum
                  if (expected_value1 > max_value1 + 1e-6) {
                     max_value1 = expected_value1;
                     n_depletion1 = i;
                     n_order1 = j1;
                  }
-             }   
+               }   
             // Policy 2: order q=0;
              int j2= 0;
-             float expected_value2 = 0.0;
-             for (int k = demand.min_demand; k < demand.max_demand; k++) {
-
-                // Always initialize state array before calling of revenue()
-                // As the value is corrupted and can't be used again
-                decode(state, current);
-
-                // By calling revenue(), the state array
-                // now stores the state for future
-                float value = revenue(state, current, i, j2, k);
-
-                // And find the corresponding utility of future
-                int futuresum = sum(state, n_dimension+1);
-                int future = encode(state);
-                
-                // Adding the recursive part
-                value += discount * future_values[future];
-
-                expected_value2 += demand.distribution[k - demand.min_demand] * value;
-             }
-
-            // Simply taking the moving maximum
+             float expected_value2 = stateValue(current,i,j2,future_values,demand, period);
+                        // Simply taking the moving maximum
              if (expected_value2 > max_value2 + 1e-6) {
                 max_value2 = expected_value2;
                 n_depletion2 = i;
@@ -191,86 +154,12 @@ iter_kernel(float *current_values,
            depletion[current] = (dp_int) n_depletion2;
            order[current] = (dp_int) n_order2;
          }
-      } 
-      else{
-         int i= depletion[parent]+1;
-            // Policy 1: order positive number q>0;
-           
-         if (currentsum- i < cvalue){
-             int j1 = cvalue- currentsum + i;
-            
-             float expected_value1 = 0.0;
-
-             for (int k = demand.min_demand; k < demand.max_demand; k++) {
-
-                // Always initialize state array before calling of revenue()
-                // As the value is corrupted and can't be used again
-                    decode(state, current);
-
-                // By calling revenue(), the state array
-                // now stores the state for future
-                    float value = revenue(state, current, i, j1, k);
-
-                // And find the corresponding utility of future
-                    int futuresum = sum(state, n_dimension+1);
-                    int future = encode(state);
-                
-                // Here the approximation is based on the theory
-                    value += discount * future_values[future];
-                    expected_value1 += demand.distribution[k - demand.min_demand] * value;
-              }
-
-            // Simply taking the moving maximum
-              if (expected_value1 > max_value1 + 1e-6) {
-                    max_value1 = expected_value1;
-                    n_depletion1 = i;
-                    n_order1 = j1;
-              }
-          }   
-            // Policy 2: order q=0;
-          int j2= 0;
-          float expected_value2 = 0.0;
-          for (int k = demand.min_demand; k < demand.max_demand; k++) {
-
-                // Always initialize state array before calling of revenue()
-                // As the value is corrupted and can't be used again
-                decode(state, current);
-
-                // By calling revenue(), the state array
-                // now stores the state for future
-                float value = revenue(state, current, i, j2, k);
-
-                // And find the corresponding utility of future
-                int futuresum = sum(state, n_dimension+1);
-                int future = encode(state);
-                
-                // Adding the recursive part
-                value += discount * future_values[future];
-
-                expected_value2 += demand.distribution[k - demand.min_demand] * value;
-           }
-
-            // Simply taking the moving maximum
-           if (expected_value2 > max_value2 + 1e-6) {
-                max_value2 = expected_value2;
-                n_depletion2 = i;
-                n_order2 = j2;
-           }
-           
-
-    // Store the optimal point and value
-           if (max_value1 > max_value2 + 1e-6 && n_order1 > 0){
-              current_values[current] = max_value1;
-              depletion[current] = (dp_int) n_depletion1;
-              order[current] = (dp_int) n_order1;
-           }
-           else {
-              current_values[current] = max_value2;
-              depletion[current] = (dp_int) n_depletion2;
-              order[current] = (dp_int) n_order2;
-           }
-
-      } 
+   // then update aux_current_values
+    int j =0;
+    if (n_capacity- currentsum >0){
+        j= n_capacity - currentsum;
+    }
+    aux_current_values[current] = stateValue(current, 0, j, aux_future_values,demand, period);  
     }
 }
 
@@ -280,18 +169,22 @@ iter_kernel(float *current_values,
 // If you feel confused, start from there!
 void
 iter_states(float *current_values,
+            float *aux_current_values,
             dp_int *depletion,
             dp_int *order,
             float *future_values,
+            float *aux_future_values,
             int period) {
 
     size_t num_states = std::pow(n_capacity, n_dimension);
 
     // The very first state 0,0,...,0
     iter_kernel<<<1, 1>>>(current_values,
+                          aux_current_values,
                           depletion,
                           order,
                           future_values,
+                          aux_future_values,
                           period,
                           0, 1);
 
@@ -304,9 +197,11 @@ iter_states(float *current_values,
 
         for (size_t batch_idx = 1; batch_idx < n_capacity; batch_idx++) {
             iter_kernel<<<grid_dim, block_dim>>>(current_values,
+                                                 aux_current_values,
                                                  depletion,
                                                  order,
                                                  future_values,
+                                                 aux_future_values,
                                                  period,
                                                  batch_idx,
                                                  batch_size);
