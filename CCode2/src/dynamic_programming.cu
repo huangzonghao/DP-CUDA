@@ -88,11 +88,9 @@ init_states(float *current_values) {
 // The CUDA kernel function for DP
 __global__ void
 iter_kernel(float *current_values,
-            float *aux_current_values,
             dp_int *depletion,
             dp_int *order,
             float *future_values,
-            float *aux_future_values,
             int period,
             size_t batch_idx,
             size_t batch_size) {
@@ -108,59 +106,46 @@ iter_kernel(float *current_values,
         int state[n_dimension+1] = {};
         decode(state, current);
         int currentsum = sum(state, n_dimension+1);
-        int n_depletion1 = 0;
-        int n_depletion2 = 0;
-        int n_order1 = 0;
-        int n_order2 = 0;
+        int n_depletion = 0;
+        int n_order = 0;
 
-        float max_value1 = 0.0;
-        float max_value2 = 0.0;
-
+        float max_value = 0.0;
+    
         struct Demand demand = demand_distribution_at_period[0];
-        
-        for (int i = 0; i <= currentsum; i++){        
-            // Policy 1: order positive number q>0;
-           
-              if (currentsum- i < n_capacity){
-                 int j1 = n_capacity- currentsum + i;
-                 float expected_value1 = stateValue(current,i,j1,aux_future_values,demand, period) ;
-                 
-                       // Simply taking the moving maximum
-                 if (expected_value1 > max_value1 + 1e-6) {
-                    max_value1 = expected_value1;
-                    n_depletion1 = i;
-                    n_order1 = j1;
+     
+        // Case 1: period < T-L-1;
+        if (period < n_period- n_dimension){
+               n_depletion= 0;
+               n_order =0;
+               if (n_capacity-1- currentsum >0){
+                  n_order= n_capacity-1 - currentsum;
+               }
+               current_values[current] = stateValue(current, n_depletion, n_order, future_values,demand, period);  
+               depletion[current] = (dp_int) n_depletion;
+               order[current] = (dp_int) n_order;
+        }
+        // Case 2
+        else {
+           for (int i = 0; i <= currentsum; i++){        
+               int j= 0;
+               if (currentsum- i < n_capacity-1){
+                  j = n_capacity-1- currentsum + i;
+               }
+               float expected_value = stateValue(current,i,j,future_values,demand, period) ;
+                
+                 // Simply taking the moving maximum
+               if (expected_value > max_value + 1e-6) {
+                    max_value = expected_value;
+                    n_depletion = i;
+                    n_order = j;
                  }
-               }   
-            // Policy 2: order q=0;
-             int j2= 0;
-             float expected_value2 = stateValue(current,i,j2,future_values,demand, period);
-                        // Simply taking the moving maximum
-             if (expected_value2 > max_value2 + 1e-6) {
-                max_value2 = expected_value2;
-                n_depletion2 = i;
-                n_order2 = j2;
-             }
-         }  
-
-    // Store the optimal point and value
-         if (max_value1 > max_value2 + 1e-6 && n_order1 > 0){
-            current_values[current] = max_value1;
-            depletion[current] = (dp_int) n_depletion1;
-            order[current] = (dp_int) n_order1;
+           }   
+           current_values[current] = max_value;
+            depletion[current] = (dp_int) n_depletion;
+            order[current] = (dp_int) n_order;
          }
-         else {
-           current_values[current] = max_value2;
-           depletion[current] = (dp_int) n_depletion2;
-           order[current] = (dp_int) n_order2;
-         }
-   // then update aux_current_values
-    int j =0;
-    if (n_capacity- currentsum >0){
-        j= n_capacity - currentsum;
-    }
-    aux_current_values[current] = stateValue(current, 0, j, aux_future_values,demand, period);  
-    }
+        
+   }
 }
 
 
@@ -169,22 +154,18 @@ iter_kernel(float *current_values,
 // If you feel confused, start from there!
 void
 iter_states(float *current_values,
-            float *aux_current_values,
             dp_int *depletion,
             dp_int *order,
             float *future_values,
-            float *aux_future_values,
             int period) {
 
     size_t num_states = std::pow(n_capacity, n_dimension);
 
     // The very first state 0,0,...,0
     iter_kernel<<<1, 1>>>(current_values,
-                          aux_current_values,
                           depletion,
                           order,
                           future_values,
-                          aux_future_values,
                           period,
                           0, 1);
 
@@ -197,11 +178,9 @@ iter_states(float *current_values,
 
         for (size_t batch_idx = 1; batch_idx < n_capacity; batch_idx++) {
             iter_kernel<<<grid_dim, block_dim>>>(current_values,
-                                                 aux_current_values,
                                                  depletion,
                                                  order,
                                                  future_values,
-                                                 aux_future_values,
                                                  period,
                                                  batch_idx,
                                                  batch_size);

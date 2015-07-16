@@ -123,7 +123,7 @@ iter_kernel(float *current_values,
                      // n_depletion, min_depletion, max_depletion
                      depletion, depletion[parent]+1, depletion[parent]+2,
                      // n_order, min_order, max_order
-                     order, 0, n_capacity,
+                     order, order[parent], order[parent]+1,
                      // future utility for reference
                      future_values,
                      period);

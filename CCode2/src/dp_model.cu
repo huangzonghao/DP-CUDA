@@ -1,4 +1,4 @@
-#include "dp_model.h"
+#include "/ghome/hzhangaq/DP-parellel-computing/CCode/src/dp_model.h"
 
 
 // Handcraft array summation

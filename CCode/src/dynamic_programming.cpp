@@ -6,7 +6,7 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
-#include "dp_model.h"
+#include "/ghome/hzhangaq/DP-parellel-computing/CCode/src/dp_model.h"
 
 #define checkCudaErrors(val) check( (val), #val, __FILE__, __LINE__)
 
@@ -92,7 +92,7 @@ main() {
           idx_1 /= n_capacity;
       }
       if (idxsum <= cvalue){
-          /*  int exp = std::pow(n_capacity, n_dimension-1);
+         /*   int exp = std::pow(n_capacity, n_dimension-1);
             int i = idx;
             for (int k = 0; k < n_dimension; k++) {
                 if (k > 0) {
@@ -104,7 +104,7 @@ main() {
             }
             std::cout << '\t'; 
             std::cout << static_cast<int>(d_depletion[idx]) << ',';
-            std::cout << static_cast<int>(d_order[idx]) << ','; */  
+            std::cout << static_cast<int>(d_order[idx]) << ',';  */ 
             std::cout << std::fixed << std::setprecision(4) << d_future_values[idx];
             std::cout << '\n';
       }

@@ -16,7 +16,7 @@
 #define __constant__
 #endif
 
-#define MAX_DISTRIBUTION_LENGTH 50
+#define MAX_DISTRIBUTION_LENGTH 60
 
 
 extern void init_states(float *);
@@ -27,12 +27,13 @@ extern void iter_states(float *,
                         int);
 
 
-const unsigned n_period = 10;
+const unsigned n_period = 15;
 
-const int n_dimension = 5;
-const int n_capacity = 15;
-const float n_drate = 15;
+const int n_dimension = 1;
+const int n_capacity = 40;
+const float n_drate = 35;
 const int initial_small = 10000;
+const int cvalue= 100000;
 
 const float unit_salvage = 1.0;
 const float unit_hold = -0.5;
@@ -51,16 +52,29 @@ struct Demand {
 
 __device__ __constant__ struct Demand
 demand_distribution_at_period[1] = {
+
     // Demand struct for 1st period
-    {
+     {
         0,
-        15,
-        {4.53999298e-05,   4.53999298e-04,   2.26999649e-03,
-         7.56665496e-03,   1.89166374e-02,   3.78332748e-02,
-         6.30554580e-02,   9.00792257e-02,   1.12599032e-01,
-         1.25110036e-01,   1.25110036e-01,   1.13736396e-01,
-         9.47803301e-02,   7.29079462e-02,   5.20771044e-02}
-    }
+        51,
+        {6.30511676e-16,   2.20679087e-14,   3.86188402e-13,
+         4.50553135e-12,   3.94233993e-11,   2.75963795e-10,
+         1.60978881e-09,   8.04894403e-09,   3.52141301e-08,
+         1.36943839e-07,   4.79303438e-07,   1.52505639e-06,
+         4.44808115e-06,   1.19756031e-05,   2.99390077e-05,
+         6.98576847e-05,   1.52813685e-04,   3.14616411e-04,
+         6.11754132e-04,   1.12691551e-03,   1.97210214e-03,
+         3.28683689e-03,   5.22905869e-03,   7.95726323e-03,
+         1.16043422e-02,   1.62460791e-02,   2.18697219e-02,
+         2.83496394e-02,   3.54370493e-02,   4.27688526e-02,
+         4.98969947e-02,   5.63353166e-02,   6.16167525e-02,
+         6.53511012e-02,   6.72731924e-02,   6.72731924e-02,
+         6.54044926e-02,   6.18691146e-02,   5.69847108e-02,
+         5.11401251e-02,   4.47476095e-02,   3.81991788e-02,
+         3.18326490e-02,   2.59102957e-02,   2.06104625e-02,
+         1.60303597e-02,   1.21970128e-02,   9.08288190e-03,
+         6.62293472e-03,   4.73066765e-03,   3.31146736e-03}
+     }
 };    
 /*  {
         0,

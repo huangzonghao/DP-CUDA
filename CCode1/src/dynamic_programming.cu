@@ -172,3 +172,4 @@ iter_states(float *current_values,
     cudaThreadSynchronize();
 
 }
+
