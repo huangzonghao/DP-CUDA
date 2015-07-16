@@ -2,10 +2,9 @@
 # coding: utf-8
 
 
-n= 40**5 
-f= open("/ghome/hzhangaq/DP-parellel-computing/CCode/dp_optimal_0711.log");
-g= open("/ghome/hzhangaq/DP-parellel-computing/CCode2/dp_policy_0711.log");
-h= open("/ghome/hzhangaq/DP-parellel-computing/CCode1/dp_spolicy_0711.log");
+n= 10**7
+f= open("/ghome/hzhangaq/DP-parellel-computing/CCode/dp_optimal_2.log");
+g= open("/ghome/hzhangaq/DP-parellel-computing/CCode2/dp_policy_2.log");
 sum = 0
 sum1 = 0
 count=0
